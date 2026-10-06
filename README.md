@@ -9,10 +9,8 @@ concepts, I've never had a chance to slow down and really explore them outside
 of trying to deliver a specific project.
 
 This repository is an exercise in learning in public. With luck
-it'll be helpful for others too.
-
-Code and documentation handwritten by a real human unless otherwise noted -
-best way to learn is by doing.
+it'll be helpful for others too. Code and documentation handwritten by a real
+human unless otherwise noted - the best way to learn is by doing.
 
 Onward, together ❤️
 

@@ -342,7 +342,7 @@ defmodule SolarWeb.CoreComponents do
 
   def h1(assigns) do
     ~H"""
-    <h1 class="text-2xl leading-8">
+    <h1 class="mb-6 text-2xl leading-8">
       {render_slot(@inner_block)}
     </h1>
     """
@@ -355,7 +355,7 @@ defmodule SolarWeb.CoreComponents do
 
   def h2(assigns) do
     ~H"""
-    <h2 class="text-xl leading-6">
+    <h2 class="mb-6 text-xl leading-6">
       {render_slot(@inner_block)}
     </h2>
     """
@@ -368,7 +368,7 @@ defmodule SolarWeb.CoreComponents do
 
   def p(assigns) do
     ~H"""
-    <p class="leading-6">
+    <p class="leading-6.5 mb-6 max-w-2xl">
       {render_slot(@inner_block)}
     </p>
     """
