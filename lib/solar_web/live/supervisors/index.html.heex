@@ -2,7 +2,7 @@
   <.h1>Supervisors</.h1>
 
   <div
-    id="supervisors-canvas"
+    id="supervisors-react-flow"
     phx-hook=".ReactFlowCanvas"
     phx-update="ignore"
     class="mt-4 h-[600px] max-h-[90vh] w-full rounded-box border border-base-300 bg-base-200/60"
@@ -10,30 +10,179 @@
   </div>
 
   <script :type={Phoenix.LiveView.ColocatedHook} name=".ReactFlowCanvas" extension="jsx">
+    import {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from "react"
     import {createRoot} from "react-dom/client"
-    import {Background, Controls, ReactFlow} from "@xyflow/react"
+    import {
+      Background,
+      Controls,
+      MiniMap,
+      ReactFlow,
+      ReactFlowProvider,
+      addEdge,
+      applyEdgeChanges,
+      applyNodeChanges,
+    } from "@xyflow/react"
 
-    function HelloFlow(props) {
+    // Data
+
+    function toServerDataNode(node) {
+      const out = {
+        id: node.id,
+        position: {x: Math.round(node.position.x), y: Math.round(node.position.y)},
+        data: node.data,
+      }
+      if (node.type) out.type = node.type
+      return out
+    }
+
+    function toServerDataEdge(edge) {
+      const out = {id: edge.id, source: edge.source, target: edge.target}
+      if (edge.sourceHandle) out.sourceHandle = edge.sourceHandle
+      if (edge.targetHandle) out.targetHandle = edge.targetHandle
+      return out
+    }
+
+    function toServerData(nodes, edges) {
+      return {nodes: nodes.map(toServerDataNode), edges: edges.map(toServerDataEdge)}
+    }
+
+    function encodeForComparison(value) {
+      if (Array.isArray(value)) return `[${value.map(encodeForComparison).join(",")}]`
+      if (value && typeof value === "object") {
+        return `{${Object.keys(value)
+          .sort()
+          .map(key => `${JSON.stringify(key)}:${encodeForComparison(value[key])}`)
+          .join(",")}}`
+      }
+      return JSON.stringify(value)
+    }
+
+    function mergeNodes(current, incoming) {
+      const byId = new Map(current.map(node => [node.id, node]))
+
+      return incoming.map(node => {
+        const local = byId.get(node.id)
+        if (!local) return node
+        return {...local, ...node, position: local.dragging ? local.position : node.position}
+      })
+    }
+
+    function mergeEdges(current, incoming) {
+      const byId = new Map(current.map(edge => [edge.id, edge]))
+
+      return incoming.map(edge => {
+        const local = byId.get(edge.id)
+        return local ? {...local, ...edge} : edge
+      })
+    }
+
+    // Instance
+
+    const ReactFlowContext = createContext({pushEvent: () => {}})
+
+    function ReactFlowInstance({data, browserInstanceId, pushEvent}) {
+      const [nodes, setNodes] = useState(() => data.nodes)
+      const [edges, setEdges] = useState(() => data.edges)
+      const lastSynced = useRef(encodeForComparison(toServerData(data.nodes, data.edges)))
+
+      useEffect(() => {
+        if (data.client_id === browserInstanceId) return
+
+        lastSynced.current = encodeForComparison(toServerData(data.nodes, data.edges))
+        setNodes(current => mergeNodes(current, data.nodes))
+        setEdges(current => mergeEdges(current, data.edges))
+      }, [data, browserInstanceId])
+
+      useEffect(() => {
+        if (nodes.some(node => node.dragging)) return
+
+        const next = toServerData(nodes, edges)
+        const key = encodeForComparison(next)
+        if (key === lastSynced.current) return
+
+        lastSynced.current = key
+        pushEvent("data", {...next, client_id: browserInstanceId})
+      }, [nodes, edges, browserInstanceId, pushEvent])
+
+      // Future: server status will be  passed in separately and layer on at render time so it never enters `nodes` state and
+      // therefore never enters the snapshot. Custom nodes read it as data.status.
+      const statuses = {}
+      const displayNodes = useMemo(
+        () => nodes.map(node => ({...node, data: {...node.data, status: statuses[node.id]}})),
+        [nodes, statuses],
+      )
+
+      const onNodesChange = useCallback(changes => setNodes(current => applyNodeChanges(changes, current)), [])
+      const onEdgesChange = useCallback(changes => setEdges(current => applyEdgeChanges(changes, current)), [])
+      const onConnect = useCallback(connection => setEdges(current => addEdge(connection, current)), [])
+
+      const context = useMemo(() => ({pushEvent}), [pushEvent])
+
       return (
-        <ReactFlow defaultNodes={props.data.nodes} defaultEdges={props.data.edges} fitView>
-          <Background />
-          <Controls />
-        </ReactFlow>
+        <ReactFlowContext.Provider value={context}>
+          <ReactFlow
+            nodes={displayNodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            deleteKeyCode={["Backspace", "Delete"]}
+            fitView
+            fitViewOptions={{padding: 0.3, maxZoom: 1}}
+            minZoom={0.3}
+          >
+            <Background />
+            <Controls />
+            <MiniMap pannable zoomable />
+          </ReactFlow>
+        </ReactFlowContext.Provider>
       )
     }
 
+    // Instance lifecycle
+
+    function mount(el, {browserInstanceId, pushEvent, data}) {
+      const root = createRoot(el)
+      let current = {data}
+
+      const render = () =>
+        root.render(
+          <ReactFlowProvider>
+            <ReactFlowInstance browserInstanceId={browserInstanceId} pushEvent={pushEvent} data={current.data} />
+          </ReactFlowProvider>
+        )
+
+      render()
+
+      return {
+        setData: data => {
+          current = {...current, data}
+          render()
+        },
+        unmount: () => root.unmount()
+      }
+    }
+
+    // LiveView Hook
+
     export default {
       mounted() {
-        this.root = createRoot(this.el)
+        this.browserInstanceId = crypto.randomUUID()
 
-        this.handleEvent("data", (data) => {
-          this.root.render(<HelloFlow data={data} />)
+        const pushEvent = (event, payload) => this.pushEvent(event, payload)
+
+        this.handleEvent("data", data => {
+          if (this.reactFlowInstance) {
+            this.reactFlowInstance.setData(data)
+          } else {
+            this.reactFlowInstance = mount(this.el, {browserInstanceId: this.browserInstanceId, pushEvent, data})
+          }
         })
       },
 
       destroyed() {
-        this.root?.unmount()
-      },
+        this.reactFlowInstance?.unmount()
+      }
     }
   </script>
 </Layouts.app>
