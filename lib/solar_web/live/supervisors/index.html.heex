@@ -1,3 +1,44 @@
 <Layouts.app flash={@flash}>
   <.h1>Supervisors</.h1>
+
+  <div
+    id="supervisors-canvas"
+    phx-hook=".ReactFlowCanvas"
+    phx-update="ignore"
+    class="mt-4 h-[600px] max-h-[90vh] w-full rounded-box border border-base-300 bg-base-200/60"
+  >
+  </div>
+
+  <%#-- Note: The `extension="jsx"` removes the requirement of doing `import React`. Neat! --%>
+  <script :type={Phoenix.LiveView.ColocatedHook} name=".ReactFlowCanvas" extension="jsx">
+    import {createRoot} from "react-dom/client"
+    import {Background, Controls, ReactFlow} from "@xyflow/react"
+
+    const nodes = [
+      {id: "hello", position: {x: 0, y: 0}, data: {label: "Hello"}},
+      {id: "world", position: {x: 0, y: 120}, data: {label: "World"}},
+    ]
+
+    const edges = [{id: "hello-world", source: "hello", target: "world"}]
+
+    function HelloFlow() {
+      return (
+        <ReactFlow defaultNodes={nodes} defaultEdges={edges} fitView>
+          <Background />
+          <Controls />
+        </ReactFlow>
+      )
+    }
+
+    export default {
+      mounted() {
+        this.root = createRoot(this.el)
+        this.root.render(<HelloFlow />)
+      },
+
+      destroyed() {
+        this.root?.unmount()
+      },
+    }
+  </script>
 </Layouts.app>
