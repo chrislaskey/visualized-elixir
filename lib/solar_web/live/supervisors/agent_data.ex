@@ -2,12 +2,12 @@ defmodule SolarWeb.SupervisorsLive.Agent.Data do
   use Agent
 
   @default_data %{
-    nodes: [
-      %{id: "hello", position: %{x: 0, y: 0}, data: %{label: "Hello"}},
-      %{id: "world", position: %{x: 0, y: 120}, data: %{label: "World"}}
+    "nodes" => [
+      %{"id" => "hello", "position" => %{"x" => 0, "y" => 0}, "data" => %{"label" => "Hello"}},
+      %{"id" => "world", "position" => %{"x" => 0, "y" => 120}, "data" => %{"label" => "World"}}
     ],
-    edges: [
-      %{id: "hello-world", source: "hello", target: "world"}
+    "edges" => [
+      %{"id" => "hello-world", "source" => "hello", "target" => "world"}
     ]
   }
 
