@@ -13,6 +13,7 @@ defmodule Solar.Application do
       {Phoenix.PubSub, name: Solar.PubSub},
       # Start a worker by calling: Solar.Worker.start_link(arg)
       # {Solar.Worker, arg},
+      SolarWeb.SupervisorsLive.Agent.Data,
       # Start to serve requests, typically the last entry
       SolarWeb.Endpoint
     ]
