@@ -1,18 +1,23 @@
-# Solar
+# Visualized Elixir
 
-To start your Phoenix server:
+> Interactive visualizations of Supervisor, GenServer, Agent, GenStage, and Telemetry
 
-* Run `mix setup` to install and setup dependencies
-* Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+## Motivation
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+Although I write Elixir professionally and am familiar with many of these
+concepts, I've never had a chance to slow down and really explore them outside
+of trying to deliver a specific project.
 
-Ready to run in production? Please [check our deployment guides](https://phoenix.hexdocs.pm/deployment.html).
+This repository is an exercise in learning in public. With luck
+it'll be helpful for others too. Code and documentation handwritten by a real
+human unless otherwise noted - the best way to learn is by doing.
 
-## Learn more
+Onward, together ❤️
 
-* Official website: https://www.phoenixframework.org/
-* Guides: https://phoenix.hexdocs.pm/overview.html
-* Docs: https://phoenix.hexdocs.pm
-* Forum: https://elixirforum.com/c/phoenix-forum
-* Source: https://github.com/phoenixframework/phoenix
+## Running the app
+
+```bash
+mix setup && iex -S mix phx.server
+```
+
+Then visit [`localhost:4400`](http://localhost:4400) from your browser.

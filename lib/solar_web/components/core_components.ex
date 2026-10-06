@@ -323,15 +323,54 @@ defmodule SolarWeb.CoreComponents do
     ~H"""
     <header class={[@actions != [] && "flex items-center justify-between gap-6", "pb-4"]}>
       <div>
-        <h1 class="text-lg font-semibold leading-8">
+        <.h1 class="text-lg font-semibold leading-8">
           {render_slot(@inner_block)}
-        </h1>
+        </.h1>
         <p :if={@subtitle != []} class="text-sm text-base-content/70">
           {render_slot(@subtitle)}
         </p>
       </div>
       <div class="flex-none">{render_slot(@actions)}</div>
     </header>
+    """
+  end
+
+  @doc """
+  Renders a `<h1>`
+  """
+  slot :inner_block, required: true
+
+  def h1(assigns) do
+    ~H"""
+    <h1 class="mb-6 text-2xl leading-8">
+      {render_slot(@inner_block)}
+    </h1>
+    """
+  end
+
+  @doc """
+  Renders a `<h2>`
+  """
+  slot :inner_block, required: true
+
+  def h2(assigns) do
+    ~H"""
+    <h2 class="mb-6 text-xl leading-6">
+      {render_slot(@inner_block)}
+    </h2>
+    """
+  end
+
+  @doc """
+  Renders a `<p>`
+  """
+  slot :inner_block, required: true
+
+  def p(assigns) do
+    ~H"""
+    <p class="leading-6.5 mb-6 max-w-2xl">
+      {render_slot(@inner_block)}
+    </p>
     """
   end
 
