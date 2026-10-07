@@ -19,7 +19,7 @@ defmodule SolarWeb.SupervisorsLive.Agent.Data do
         "position" => %{"x" => 0, "y" => 240},
         "data" => %{
           "label" => "Supervisor 2",
-          "config" => %{"strategy" => "one_for_all"},
+          "config" => %{"strategy" => "one_for_all"}
         }
       },
       %{
@@ -37,7 +37,7 @@ defmodule SolarWeb.SupervisorsLive.Agent.Data do
         "position" => %{"x" => 0, "y" => 500},
         "data" => %{
           "label" => "GenServer 4",
-          "config" => %{"restart" => "permanent"},
+          "config" => %{"restart" => "permanent"}
         }
       }
     ],

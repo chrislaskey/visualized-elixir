@@ -21,6 +21,14 @@ defmodule SolarWeb.Router do
 
     live "/", HomeLive.Index, :index
     live "/supervisors", SupervisorsLive.Index, :index
+    live "/explorations", ExplorationsLive.Index, :index
+    live "/explorations/process-cards", ExplorationsLive.ProcessCards, :index
+    live "/explorations/process-cards-continued", ExplorationsLive.ProcessCardsContinued, :index
+
+    live "/explorations/process-cards-round-three",
+         ExplorationsLive.ProcessCardsRoundThree,
+         :index
+
     live_dashboard "/dashboard", metrics: SolarWeb.Telemetry
   end
 end
