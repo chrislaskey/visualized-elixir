@@ -2,6 +2,8 @@
 
 > Interactive visualizations of Supervisor, GenServer, Agent, GenStage, and Telemetry
 
+> <p align="center"><strong>See the full interactive demo at <a href="https://visualized-elixir.fly.dev" target="_blank">visualized-elixir.fly.dev</a></strong></p>
+
 ## Motivation
 
 Although I write Elixir professionally and am familiar with many of these
