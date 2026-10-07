@@ -11,10 +11,9 @@ defmodule Solar.Application do
       SolarWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:solar, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Solar.PubSub},
-      # Start a worker by calling: Solar.Worker.start_link(arg)
-      # {Solar.Worker, arg},
       SolarWeb.SupervisorsLive.Agent.Data,
-      # Start to serve requests, typically the last entry
+      {SolarWeb.SupervisorsLive.DynamicSupervisor,
+       name: SolarWeb.SupervisorsLive.DynamicSupervisor, strategy: :one_for_one},
       SolarWeb.Endpoint
     ]
 
