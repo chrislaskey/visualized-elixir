@@ -12,6 +12,7 @@
   <script :type={Phoenix.LiveView.ColocatedHook} name=".ReactFlowCanvas" extension="jsx">
     import {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from "react"
     import {createRoot} from "react-dom/client"
+    import {supervisionNodeTypes} from "@/js/process_card"
     import {
       Background,
       Controls,
@@ -104,7 +105,7 @@
         pushEvent("data", {...next, client_id: browserInstanceId})
       }, [nodes, edges, browserInstanceId, pushEvent])
 
-      // Future: server status will be  passed in separately and layer on at render time so it never enters `nodes` state and
+      // Future: server status will be passed in separately and layer on at render time so it never enters `nodes` state and
       // therefore never enters the snapshot. Custom nodes read it as data.status.
       const statuses = {}
       const displayNodes = useMemo(
@@ -123,6 +124,7 @@
           <ReactFlow
             nodes={displayNodes}
             edges={edges}
+            nodeTypes={supervisionNodeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
