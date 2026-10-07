@@ -3,11 +3,48 @@ defmodule SolarWeb.SupervisorsLive.Agent.Data do
 
   @default_data %{
     "nodes" => [
-      %{"id" => "hello", "position" => %{"x" => 0, "y" => 0}, "data" => %{"label" => "Hello"}},
-      %{"id" => "world", "position" => %{"x" => 0, "y" => 120}, "data" => %{"label" => "World"}}
+      %{
+        "id" => "root",
+        "type" => "supervisor",
+        "position" => %{"x" => 180, "y" => 0},
+        "data" => %{
+          "label" => "Supervisor 1",
+          "root" => true,
+          "config" => %{"strategy" => "one_for_one"}
+        }
+      },
+      %{
+        "id" => "sup-2",
+        "type" => "supervisor",
+        "position" => %{"x" => 0, "y" => 240},
+        "data" => %{
+          "label" => "Supervisor 2",
+          "config" => %{"strategy" => "one_for_all"},
+        }
+      },
+      %{
+        "id" => "gen-3",
+        "type" => "worker",
+        "position" => %{"x" => 360, "y" => 240},
+        "data" => %{
+          "label" => "GenServer 3",
+          "config" => %{"restart" => "permanent"}
+        }
+      },
+      %{
+        "id" => "gen-4",
+        "type" => "worker",
+        "position" => %{"x" => 0, "y" => 500},
+        "data" => %{
+          "label" => "GenServer 4",
+          "config" => %{"restart" => "permanent"},
+        }
+      }
     ],
     "edges" => [
-      %{"id" => "hello-world", "source" => "hello", "target" => "world"}
+      %{"id" => "root-sup-2", "source" => "root", "target" => "sup-2"},
+      %{"id" => "root-gen-3", "source" => "root", "target" => "gen-3"},
+      %{"id" => "sup-2-gen-4", "source" => "sup-2", "target" => "gen-4"}
     ]
   }
 
