@@ -12,8 +12,8 @@ defmodule Solar.Application do
       {DNSCluster, query: Application.get_env(:solar, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Solar.PubSub},
       SolarWeb.SupervisorsLive.Agent.Data,
-      {SolarWeb.SupervisorsLive.DynamicSupervisor,
-       name: SolarWeb.SupervisorsLive.DynamicSupervisor, strategy: :one_for_one},
+      {SolarWeb.SupervisorsLive.Supervisor,
+       name: SolarWeb.SupervisorsLive.Supervisor, strategy: :one_for_one},
       SolarWeb.Endpoint
     ]
 
