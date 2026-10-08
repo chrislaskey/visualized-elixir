@@ -14,6 +14,13 @@
 import {Handle, Position} from "@xyflow/react"
 import {KIND_ICONS, ProcessCard, TABS} from "./process_card.jsx"
 import {ActionPanel, AddPanel, ConfigPanel, LogsPanel} from "./panels.jsx"
+import {useReactFlowContext} from "./react_flow_context.jsx"
+
+// What a supervisor can add. One kind for now; a GenServer option joins it
+// once there is a GenServer to start.
+const SUPERVISOR_ADDS = [
+  {kind: "supervisor", label: "+ Supervisor", hint: "A child supervisor with its own strategy"},
+]
 
 const HANDLE_CLASS = "!size-3 !rounded-full !border-2 !border-base-100 !bg-base-content/40"
 
@@ -30,14 +37,23 @@ function tabsFor(ids) {
   return TABS.filter(tab => ids.includes(tab.id))
 }
 
-export function SupervisorNode({data}) {
+export function SupervisorNode({id, data}) {
+  const {addChild} = useReactFlowContext()
   const strategy = data.config?.strategy
   const subtitle = data.subtitle ?? (strategy ? `${strategy} · gives up after 3 in 5s` : undefined)
 
   const panels = {
     action: <ActionPanel actions={["Kill", "Stop", "Delete"]} />,
     config: <ConfigPanel label="strategy" value={strategy} />,
-    add: <AddPanel />,
+    add: ({close}) => (
+      <AddPanel
+        options={SUPERVISOR_ADDS}
+        onAdd={kind => {
+          addChild(id, kind)
+          close()
+        }}
+      />
+    ),
     logs: <LogsPanel />,
   }
 

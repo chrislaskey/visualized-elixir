@@ -3,16 +3,16 @@
 
   <div
     id="supervisors-react-flow"
-    phx-hook=".ReactFlowCanvas"
+    phx-hook=".ReactFlowSupervisors"
     phx-update="ignore"
     class="mt-4 h-[600px] max-h-[90vh] w-full rounded-box border border-base-300 bg-base-200/60"
   >
   </div>
 
-  <script :type={Phoenix.LiveView.ColocatedHook} name=".ReactFlowCanvas" extension="jsx">
-    import {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from "react"
+  <script :type={Phoenix.LiveView.ColocatedHook} name=".ReactFlowSupervisors" extension="jsx">
+    import {useCallback, useEffect, useMemo, useRef, useState} from "react"
     import {createRoot} from "react-dom/client"
-    import {supervisionNodeTypes} from "@/js/process_card"
+    import {ReactFlowContext, supervisionNodeTypes} from "@/js/process_card"
     import {
       Background,
       Controls,
@@ -77,14 +77,54 @@
       })
     }
 
-    // Instance
+    // Adding children
 
-    const ReactFlowContext = createContext({pushEvent: () => {}})
+    const CHILD_OFFSET_Y = 260
+    const SIBLING_OFFSET_X = 320
+
+    const KIND_PREFIX = {supervisor: "sup"}
+    const KIND_LABEL = {supervisor: "Supervisor"}
+
+    function nextNodeNumber(nodes) {
+      const numbers = nodes.map(node => Number(node.id.match(/-(\d+)$/)?.[1] ?? 0))
+      return Math.max(1, ...numbers) + 1
+    }
+
+    function childPosition(parent, siblings) {
+      if (siblings.length === 0) return {x: parent.position.x, y: parent.position.y + CHILD_OFFSET_Y}
+
+      const rightmost = Math.max(...siblings.map(node => node.position.x))
+      return {x: rightmost + SIBLING_OFFSET_X, y: parent.position.y + CHILD_OFFSET_Y}
+    }
+
+    function buildChild(kind, parent, nodes, edges) {
+      const number = nextNodeNumber(nodes)
+      const id = `${KIND_PREFIX[kind]}-${number}`
+      const siblingIds = new Set(edges.filter(edge => edge.source === parent.id).map(edge => edge.target))
+      const siblings = nodes.filter(node => siblingIds.has(node.id))
+
+      const node = {
+        id,
+        type: kind,
+        position: childPosition(parent, siblings),
+        data: {label: `${KIND_LABEL[kind]} ${number}`, config: {strategy: "one_for_one"}},
+      }
+      const edge = {id: `${parent.id}-${id}`, source: parent.id, target: id}
+
+      return {node, edge}
+    }
+
+    // Instance
 
     function ReactFlowInstance({data, browserInstanceId, pushEvent}) {
       const [nodes, setNodes] = useState(() => data.nodes)
       const [edges, setEdges] = useState(() => data.edges)
       const lastSynced = useRef(encodeForComparison(toServerData(data.nodes, data.edges)))
+
+      // The latest nodes and edges, so actions handed to the nodes
+      // through context stay stable across renders.
+      const latest = useRef({nodes, edges})
+      latest.current = {nodes, edges}
 
       useEffect(() => {
         if (data.client_id === browserInstanceId) return
@@ -117,7 +157,19 @@
       const onEdgesChange = useCallback(changes => setEdges(current => applyEdgeChanges(changes, current)), [])
       const onConnect = useCallback(connection => setEdges(current => addEdge(connection, current)), [])
 
-      const context = useMemo(() => ({pushEvent}), [pushEvent])
+      const addChild = useCallback((parentId, kind) => {
+        if (!(kind in KIND_PREFIX)) return
+
+        const {nodes, edges} = latest.current
+        const parent = nodes.find(node => node.id === parentId)
+        if (!parent) return
+
+        const {node, edge} = buildChild(kind, parent, nodes, edges)
+        setNodes(current => [...current, node])
+        setEdges(current => [...current, edge])
+      }, [])
+
+      const context = useMemo(() => ({addChild}), [addChild])
 
       return (
         <ReactFlowContext.Provider value={context}>

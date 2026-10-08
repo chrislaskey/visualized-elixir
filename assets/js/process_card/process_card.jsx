@@ -184,7 +184,9 @@ export function Drawer({children}) {
  *   restarts   number
  *   lastExit   string | null
  *   tabs       which of TABS to show, defaults to all four
- *   panels     {tabId: ReactNode} rendered in the drawer when that tab is open
+ *   panels     {tabId: ReactNode | ({close}) => ReactNode} rendered in the
+ *              drawer when that tab is open; the function form gets `close`
+ *              so a panel can shut the drawer once its job is done
  *   children   anything to overlay on the card, such as ReactFlow handles
  */
 export function ProcessCard({
@@ -203,6 +205,8 @@ export function ProcessCard({
 }) {
   const [active, setActive] = useState(null)
   const open = active != null && active in panels
+  const close = () => setActive(null)
+  const panel = open && (typeof panels[active] === "function" ? panels[active]({close}) : panels[active])
 
   return (
     <div className={`relative rounded-xl border border-base-300 bg-base-100 shadow-sm ${className}`}>
@@ -214,7 +218,7 @@ export function ProcessCard({
 
       <TabBar tabs={tabs} active={open ? active : null} onSelect={setActive} open={open} />
 
-      {open && <Drawer>{panels[active]}</Drawer>}
+      {open && <Drawer>{panel}</Drawer>}
 
       {children}
     </div>

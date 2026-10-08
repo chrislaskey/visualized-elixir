@@ -1,6 +1,6 @@
-// What each tab opens. Placeholders for now: the shape of each panel from the
-// exploration is sketched with text so the drawer has something to show, and
-// nothing here is wired to the server yet.
+// What each tab opens. The Add panel is built; the others are placeholders
+// sketching the shape of each panel from the exploration so the drawer has
+// something to show. Nothing but Add is wired up yet.
 
 function Placeholder({children}) {
   return <p className="text-[11px] leading-snug text-base-content/60">{children}</p>
@@ -34,8 +34,27 @@ export function ConfigPanel({label, value}) {
   )
 }
 
-export function AddPanel() {
-  return <Placeholder>Adding children to this supervisor will go here.</Placeholder>
+// The Add panel from round three: a two-column grid of buttons, one per kind
+// of child this process can have, each with a label and a one-line hint.
+//
+//   options  [{kind, label, hint}]
+//   onAdd    called with the option's kind
+export function AddPanel({options = [], onAdd}) {
+  return (
+    <div className="grid grid-cols-2 gap-1.5">
+      {options.map(option => (
+        <button
+          key={option.kind}
+          type="button"
+          onClick={() => onAdd?.(option.kind)}
+          className="rounded-md border border-base-300 bg-base-100 px-2 py-1.5 text-left transition-colors hover:border-base-content/40 active:scale-[0.98]"
+        >
+          <span className="text-[11px] font-medium">{option.label}</span>
+          <span className="block text-[10px] leading-snug text-base-content/60">{option.hint}</span>
+        </button>
+      ))}
+    </div>
+  )
 }
 
 export function LogsPanel() {
