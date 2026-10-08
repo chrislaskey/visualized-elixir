@@ -15,3 +15,4 @@ export {
 } from "./process_card.jsx"
 export {ActionPanel, AddPanel, ConfigPanel, LogsPanel} from "./panels.jsx"
 export {GenServerNode, SupervisorNode, supervisionNodeTypes} from "./nodes.jsx"
+export {ReactFlowContext, useReactFlowContext} from "./react_flow_context.jsx"

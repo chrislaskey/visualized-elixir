@@ -131,6 +131,8 @@ defmodule SolarWeb.SupervisorsLive.Index do
       "consumer" => SolarWeb.SupervisorsLive.Supervisor
     }
 
+    :ok = SolarWeb.SupervisorsLive.Agent.Processes.clear_all_children()
+
     Enum.map(processes_by_parent, fn {key, value} ->
       name = String.to_atom(key)
 

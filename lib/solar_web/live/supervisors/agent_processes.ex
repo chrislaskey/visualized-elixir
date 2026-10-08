@@ -15,6 +15,14 @@ defmodule SolarWeb.SupervisorsLive.Agent.Processes do
     Agent.start_link(fn -> initial_state end, name: __MODULE__)
   end
 
+  def clear_all_children() do
+    Agent.update(__MODULE__, fn state ->
+      Map.new(state, fn {key, value} ->
+        {key, Map.put(value, :children, [])}
+      end)
+    end)
+  end
+
   def get_children(key) do
     Agent.get(__MODULE__, fn state ->
       state
