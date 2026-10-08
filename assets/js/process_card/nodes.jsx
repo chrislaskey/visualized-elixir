@@ -70,7 +70,7 @@ export function GenServerNode({data}) {
 
   return (
     <ProcessCard
-      icon={KIND_ICONS.worker}
+      icon={KIND_ICONS.genserver}
       label={data.label}
       order={data.order}
       kindName="GenServer"
@@ -88,5 +88,5 @@ export function GenServerNode({data}) {
 // its own map (producer, consumer, producer_consumer) alongside this one.
 export const supervisionNodeTypes = {
   supervisor: SupervisorNode,
-  worker: GenServerNode,
+  genserver: GenServerNode,
 }

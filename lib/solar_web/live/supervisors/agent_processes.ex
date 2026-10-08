@@ -17,13 +17,18 @@ defmodule SolarWeb.SupervisorsLive.Agent.Processes do
 
   def get_children(key) do
     Agent.get(__MODULE__, fn state ->
-      Map.get(state, key, [])
+      state
+      |> Map.get(key, %{})
+      |> Map.get(:children, [])
     end)
   end
 
   def set_children(key, value) do
     Agent.get_and_update(__MODULE__, fn state ->
-      updated = Map.put_new(state, key, %{key => value})
+      updated =
+        Map.update(state, key, %{children: value}, fn current ->
+          Map.merge(current, %{children: value})
+        end)
 
       {{:ok, updated}, updated}
     end)

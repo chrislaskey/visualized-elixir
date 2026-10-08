@@ -3,6 +3,13 @@ defmodule SolarWeb.SupervisorsLive.Index do
 
   @pubsub_topic "supervisors:updated"
 
+  @process_type_to_module_lookup %{
+    "supervisor" => SolarWeb.SupervisorsLive.Supervisor,
+    "genserver" => SolarWeb.SupervisorsLive.Supervisor,
+    "producer" => SolarWeb.SupervisorsLive.Supervisor,
+    "consumer" => SolarWeb.SupervisorsLive.Supervisor
+  }
+
   @impl true
   def mount(params, _session, socket) do
     socket =
@@ -72,36 +79,51 @@ defmodule SolarWeb.SupervisorsLive.Index do
       processes_lookup =
         Enum.reduce(nodes, %{}, fn process_data, acc ->
           process_name = Map.get(process_data, "id")
-
-          parent_name =
-            Map.get(edges_lookup, process_name, "SolarWeb.SupervisorsLive.DynamicSupervisor")
+          parent_name = Map.get(edges_lookup, process_name, "SolarWeb.SupervisorsLive.Supervisor")
 
           process_options =
-            process_data
-            |> Map.merge(process_data["data"])
+            # Flatten params
+            process_data["data"]
+            |> Map.merge(Map.get(process_data["data"], "config", %{}))
+            |> Map.merge(process_data)
             |> Map.delete("data")
+            |> Map.delete("config")
+            # Turn into keyword list
             |> Map.new(fn {key, value} -> {String.to_atom(key), value} end)
-            |> Map.put("")
+            |> Enum.into([])
+            # Add new keys
+            |> Keyword.put(:name, String.to_atom(process_name))
+            # Update values for existing keys
+            |> Keyword.replace_lazy(:strategy, fn value -> String.to_atom(value) end)
 
           Map.update(acc, parent_name, %{process_name => process_options}, fn existing ->
             Map.put(existing, process_name, process_options)
           end)
         end)
 
-      # TODO: Solve for restarts, where children that are dynamically added are lost.
-      # One option would be to have the supervisor lookup the values in an
-      # Agent on `init` instead of passing it in directly here?
-
-      # TODO: add tree values to the agent first? Otherwise need to figure out
-      # how to pass in nested child specs which is much more difficult?
-      # TODO: store name as well?
-
+      # Store the expected process tree
       Enum.map(processes_lookup, fn {key, value} ->
-        process =
-          child_options = value
+        name = String.to_atom(key)
 
-        SolarWeb.SupervisorsLive.Agent.Processes.set_children(key, value)
+        children =
+          Enum.map(value, fn {_, child} ->
+            child_module = Map.get(@process_type_to_module_lookup, child[:type])
+            child_options = child
+
+            {child_module, child_options}
+          end)
+
+        SolarWeb.SupervisorsLive.Agent.Processes.set_children(name, children)
       end)
+
+      # Rebuild process
+
+      # dbg Process.whereis(:"SolarWeb.SupervisorsLive.Supervisor")
+      # dbg Supervisor.which_children(:"SolarWeb.SupervisorsLive.Supervisor")
+      # dbg Supervisor.which_children(Solar.Supervisor)
+
+      dbg Supervisor.terminate_child(Solar.Supervisor, :"SolarWeb.SupervisorsLive.Supervisor")
+      dbg Supervisor.restart_child(Solar.Supervisor, :"SolarWeb.SupervisorsLive.Supervisor")
 
       # TODO: type
 
@@ -123,7 +145,7 @@ defmodule SolarWeb.SupervisorsLive.Index do
       #       "label" => "GenServer 3"
       #     },
       #     "id" => "gen-3",
-      #     "type" => "worker"
+      #     "type" => "genserver"
       #   },
       #   "sup-2" => %{
       #     "data" => %{

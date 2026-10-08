@@ -48,8 +48,8 @@ defmodule SolarWeb.ExplorationsLive.ProcessCardsContinued do
         %{label: "+ GenServer", hint: "A child GenServer you can crash"}
       ]
     },
-    worker: %{
-      kind: :worker,
+    genserver: %{
+      kind: :genserver,
       label: "GenServer 4",
       short: "gs",
       order: "#3/3",
@@ -125,7 +125,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCardsContinued do
     }
   }
 
-  @kinds [:supervisor, :worker, :producer, :consumer]
+  @kinds [:supervisor, :genserver, :producer, :consumer]
 
   # Every class string is spelled out so Tailwind finds it in the source.
   @kind_styles %{
@@ -134,7 +134,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCardsContinued do
       soft: "bg-violet-100 text-violet-700 dark:bg-violet-950/70 dark:text-violet-300",
       text: "text-violet-600 dark:text-violet-300"
     },
-    worker: %{
+    genserver: %{
       solid: "bg-sky-600 text-white",
       soft: "bg-sky-100 text-sky-700 dark:bg-sky-950/70 dark:text-sky-300",
       text: "text-sky-600 dark:text-sky-300"
@@ -157,7 +157,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCardsContinued do
       label: "Structural: stack, chip, out-tray, in-tray",
       icons: %{
         supervisor: "hero-square-3-stack-3d-mini",
-        worker: "hero-cpu-chip-mini",
+        genserver: "hero-cpu-chip-mini",
         producer: "hero-arrow-up-tray-mini",
         consumer: "hero-inbox-arrow-down-mini"
       }
@@ -167,7 +167,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCardsContinued do
       label: "Flow: fork, cube, send, funnel",
       icons: %{
         supervisor: "hero-share-mini",
-        worker: "hero-cube-mini",
+        genserver: "hero-cube-mini",
         producer: "hero-paper-airplane-mini",
         consumer: "hero-funnel-mini"
       }
@@ -177,7 +177,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCardsContinued do
       label: "Role: shield, cog, megaphone, inbox",
       icons: %{
         supervisor: "hero-shield-check-mini",
-        worker: "hero-cog-6-tooth-mini",
+        genserver: "hero-cog-6-tooth-mini",
         producer: "hero-megaphone-mini",
         consumer: "hero-inbox-mini"
       }
@@ -187,7 +187,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCardsContinued do
       label: "Arrows: stack, chip, up, down",
       icons: %{
         supervisor: "hero-rectangle-stack-mini",
-        worker: "hero-cpu-chip-mini",
+        genserver: "hero-cpu-chip-mini",
         producer: "hero-arrow-up-circle-mini",
         consumer: "hero-arrow-down-circle-mini"
       }
@@ -257,7 +257,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCardsContinued do
      socket
      |> assign(:page_title, "Process cards, continued")
      |> assign(:sup, @nodes.supervisor)
-     |> assign(:gen, @nodes.worker)
+     |> assign(:gen, @nodes.genserver)
      |> assign(:producer, @nodes.producer)
      |> assign(:consumer, @nodes.consumer)
      |> assign(:nodes, @nodes)
@@ -1190,13 +1190,13 @@ defmodule SolarWeb.ExplorationsLive.ProcessCardsContinued do
         <.stacked_card
           :for={k <- @kinds}
           node={@nodes[k]}
-          state={if k == :worker, do: :down, else: :running}
+          state={if k == :genserver, do: :down, else: :running}
           icon={icon_for("structural", k)}
           tone="dark"
           badge="count"
           body="grid"
           footer="icons"
-          active={if k == :worker, do: "action"}
+          active={if k == :genserver, do: "action"}
           open="popover"
           class="w-72"
         />

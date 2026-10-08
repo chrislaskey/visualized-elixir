@@ -35,7 +35,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCards do
 
   @gen %{
     id: "gen_4",
-    kind: :worker,
+    kind: :genserver,
     label: "GenServer 4",
     short: "gs",
     root: false,
@@ -386,7 +386,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCards do
     <div class={[
       "flex shrink-0 items-center justify-center rounded-full font-medium",
       @node.kind == :supervisor && "bg-base-content text-base-100",
-      @node.kind == :worker && "bg-sky-600 text-white",
+      @node.kind == :genserver && "bg-sky-600 text-white",
       @class
     ]}>
       {@node.short}
@@ -636,7 +636,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCards do
       <div class={[
         "flex items-center gap-2 rounded-t-xl border-b border-base-300 px-3 py-1.5",
         @node.kind == :supervisor && "bg-violet-50 dark:bg-violet-950/40",
-        @node.kind == :worker && "bg-sky-50 dark:bg-sky-950/40"
+        @node.kind == :genserver && "bg-sky-50 dark:bg-sky-950/40"
       ]}>
         <span class="truncate text-xs font-semibold">{@node.label}</span>
         <span class="ml-auto" /><.kind_badge node={@node} />
@@ -786,7 +786,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCards do
               <span class="font-mono">{@node.config.strategy}</span>
               <span class="text-base-content/50">· gives up after {@node.config.max_restarts} in {@node.config.max_seconds}s</span>
             </p>
-            <p :if={@node.kind == :worker}>
+            <p :if={@node.kind == :genserver}>
               <span class="font-mono">{@node.config.restart}</span>
               <span class="text-base-content/50">· {restart_help(@node.config.restart)}</span>
             </p>
@@ -1075,7 +1075,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCards do
       <div class={[
         "flex items-center gap-2 rounded-t-xl px-3 py-2",
         @node.kind == :supervisor && "bg-violet-50 dark:bg-violet-950/40",
-        @node.kind == :worker && "bg-sky-50 dark:bg-sky-950/40"
+        @node.kind == :genserver && "bg-sky-50 dark:bg-sky-950/40"
       ]}>
         <.dot status={@node.status} />
         <span class="truncate text-xs font-semibold">{@node.label}</span>

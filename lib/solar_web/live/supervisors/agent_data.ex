@@ -24,20 +24,26 @@ defmodule SolarWeb.SupervisorsLive.Agent.Data do
       },
       %{
         "id" => "gen-3",
-        "type" => "worker",
+        "type" => "supervisor",
         "position" => %{"x" => 360, "y" => 240},
         "data" => %{
           "label" => "GenServer 3",
-          "config" => %{"restart" => "permanent"}
+          "config" => %{
+            "restart" => "permanent",
+            "strategy" => "one_for_all"
+          }
         }
       },
       %{
         "id" => "gen-4",
-        "type" => "worker",
+        "type" => "supervisor",
         "position" => %{"x" => 0, "y" => 500},
         "data" => %{
           "label" => "GenServer 4",
-          "config" => %{"restart" => "permanent"}
+          "config" => %{
+            "restart" => "permanent",
+            "strategy" => "one_for_all"
+          }
         }
       }
     ],
