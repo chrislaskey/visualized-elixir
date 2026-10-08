@@ -3,13 +3,6 @@ defmodule SolarWeb.SupervisorsLive.Index do
 
   @pubsub_topic "supervisors:updated"
 
-  @process_type_to_module_lookup %{
-    "supervisor" => SolarWeb.SupervisorsLive.Supervisor,
-    "genserver" => SolarWeb.SupervisorsLive.Supervisor,
-    "producer" => SolarWeb.SupervisorsLive.Supervisor,
-    "consumer" => SolarWeb.SupervisorsLive.Supervisor
-  }
-
   @impl true
   def mount(params, _session, socket) do
     socket =
@@ -25,8 +18,7 @@ defmodule SolarWeb.SupervisorsLive.Index do
   def handle_event("data", params, socket) do
     {previous, next} = get_and_update_data(params)
     :ok = Phoenix.PubSub.broadcast(Solar.PubSub, @pubsub_topic, {:updated, next})
-
-    reconcile_processes(previous, next)
+    maybe_reconcile_processes(previous, next)
 
     {:noreply, socket}
   end
@@ -67,118 +59,26 @@ defmodule SolarWeb.SupervisorsLive.Index do
     SolarWeb.SupervisorsLive.Agent.Data.get_and_update(data)
   end
 
-  defp reconcile_processes(previous, next) do
+  # Helpers - Processes
+
+  defp maybe_reconcile_processes(previous, next) do
+    if processes_changed?(previous, next) do
+      previous
+      |> parse_child_processes_by_parent(next)
+      |> store_child_processes_by_parent_in_agent()
+
+      restart_all_processes()
+    end
+  end
+
+  defp processes_changed?(previous, next) do
     previous = cleanup_for_comparison(previous)
     next = cleanup_for_comparison(next)
 
-    if previous != next || true do
-      nodes = Map.get(next, "nodes", [])
-      edges = Map.get(next, "edges", [])
-      edges_lookup = Map.new(edges, fn edge -> {edge["target"], edge["source"]} end)
-
-      processes_lookup =
-        Enum.reduce(nodes, %{}, fn process_data, acc ->
-          process_name = Map.get(process_data, "id")
-          parent_name = Map.get(edges_lookup, process_name, "SolarWeb.SupervisorsLive.Supervisor")
-
-          process_options =
-            # Flatten params
-            process_data["data"]
-            |> Map.merge(Map.get(process_data["data"], "config", %{}))
-            |> Map.merge(process_data)
-            |> Map.delete("data")
-            |> Map.delete("config")
-            # Turn into keyword list
-            |> Map.new(fn {key, value} -> {String.to_atom(key), value} end)
-            |> Enum.into([])
-            # Add new keys
-            |> Keyword.put(:name, String.to_atom(process_name))
-            # Update values for existing keys
-            |> Keyword.replace_lazy(:strategy, fn value -> String.to_atom(value) end)
-
-          Map.update(acc, parent_name, %{process_name => process_options}, fn existing ->
-            Map.put(existing, process_name, process_options)
-          end)
-        end)
-
-      # Store the expected process tree
-      Enum.map(processes_lookup, fn {key, value} ->
-        name = String.to_atom(key)
-
-        children =
-          Enum.map(value, fn {_, child} ->
-            child_module = Map.get(@process_type_to_module_lookup, child[:type])
-            child_options = child
-
-            {child_module, child_options}
-          end)
-
-        SolarWeb.SupervisorsLive.Agent.Processes.set_children(name, children)
-      end)
-
-      # Rebuild process
-
-      # dbg Process.whereis(:"SolarWeb.SupervisorsLive.Supervisor")
-      # dbg Supervisor.which_children(:"SolarWeb.SupervisorsLive.Supervisor")
-      # dbg Supervisor.which_children(Solar.Supervisor)
-
-      dbg Supervisor.terminate_child(Solar.Supervisor, :"SolarWeb.SupervisorsLive.Supervisor")
-      dbg Supervisor.restart_child(Solar.Supervisor, :"SolarWeb.SupervisorsLive.Supervisor")
-
-      # TODO: type
-
-      #       "SolarWeb.SupervisorsLive.DynamicSupervisor" => %{
-      #   "root" => %{
-      #     "data" => %{
-      #       "config" => %{"strategy" => "one_for_one"},
-      #       "label" => "Supervisor 1",
-      #       "root" => true
-      #     },
-      #     "id" => "root",
-      #     "type" => "supervisor"
-      #   }
-      # },
-      # "root" => %{
-      #   "gen-3" => %{
-      #     "data" => %{
-      #       "config" => %{"restart" => "permanent"},
-      #       "label" => "GenServer 3"
-      #     },
-      #     "id" => "gen-3",
-      #     "type" => "genserver"
-      #   },
-      #   "sup-2" => %{
-      #     "data" => %{
-      #       "config" => %{"strategy" => "one_for_all"},
-      #       "label" => "Supervisor 2"
-      #     },
-      #     "id" => "sup-2",
-      #     "type" => "supervisor"
-      #   }
-      # },
-
-      # dbg processes_lookup
-      #
-      # parent_config = Map.get(processes_lookup,"SolarWeb.SupervisorsLive.DynamicSupervisor") 
-      #
-      # parent_options = []
-      #
-      # SolarWeb.SupervisorsLive.Supervisor.start_child(
-      #   SolarWeb.SupervisorsLive.Supervisor,
-      #   {SolarWeb.SupervisorsLive.Supervisor, opts}
-      # )
-
-      # parent_config = Map.get(processes_lookup,"SolarWeb.SupervisorsLive.DynamicSupervisor") 
-      # parent_key = String.to_atom(parent_config["id"])
-      # parent_pid = Process.whereis(parent_key)
-      #
-      # walk_nodes(processes_lookup, parent_config)
-    end
-
-    :ok
+    previous != next
   end
 
-  def cleanup_for_comparison(map) do
+  defp cleanup_for_comparison(map) do
     map
     |> Map.delete("client_id")
     |> Map.update("nodes", [], fn current ->
@@ -186,19 +86,70 @@ defmodule SolarWeb.SupervisorsLive.Index do
     end)
   end
 
-  # def walk_nodes(processes_lookup, parent_key) do
-  #   parent_config = Map.get(processes_lookup, parent_key) 
-  #   parent_key = String.to_atom(parent_config["id"])
-  #   parent_pid = Process.whereis(parent_key)
-  #
-  #   process = Map.get(processes, key)
-  #
-  #   DynamicSupervisor.start_child()
-  #
-  #   # create children?
-  #
-  #   processes
-  #   |> Map.get(key)
-  #   |> Enum.map()
-  # end
+  defp parse_child_processes_by_parent(_previous, next) do
+    nodes = Map.get(next, "nodes", [])
+    edges = Map.get(next, "edges", [])
+    edges_lookup = Map.new(edges, fn edge -> {edge["target"], edge["source"]} end)
+
+    Enum.reduce(nodes, %{}, fn process_data, acc ->
+      process_name = Map.get(process_data, "id")
+      parent_name = Map.get(edges_lookup, process_name, "SolarWeb.SupervisorsLive.Supervisor")
+      process_options = parse_child_process_options(process_name, process_data)
+
+      Map.update(acc, parent_name, %{process_name => process_options}, fn existing ->
+        Map.put(existing, process_name, process_options)
+      end)
+    end)
+  end
+
+  defp parse_child_process_options(process_name, process_data) do
+    flattened_map =
+      process_data["data"]
+      |> Map.merge(Map.get(process_data["data"], "config", %{}))
+      |> Map.merge(process_data)
+      |> Map.delete("data")
+      |> Map.delete("config")
+
+    as_keyword_list =
+      flattened_map
+      |> Map.new(fn {key, value} -> {String.to_atom(key), value} end)
+      |> Enum.into([])
+
+    with_new_keys = Keyword.put(as_keyword_list, :name, String.to_atom(process_name))
+
+    with_atom_values =
+      Keyword.replace_lazy(with_new_keys, :strategy, fn value -> String.to_atom(value) end)
+
+    with_atom_values
+  end
+
+  defp store_child_processes_by_parent_in_agent(processes_by_parent) do
+    process_type_to_module_lookup = %{
+      "supervisor" => SolarWeb.SupervisorsLive.Supervisor,
+      "genserver" => SolarWeb.SupervisorsLive.Supervisor,
+      "producer" => SolarWeb.SupervisorsLive.Supervisor,
+      "consumer" => SolarWeb.SupervisorsLive.Supervisor
+    }
+
+    Enum.map(processes_by_parent, fn {key, value} ->
+      name = String.to_atom(key)
+
+      children =
+        Enum.map(value, fn {_, child} ->
+          child_module = Map.get(process_type_to_module_lookup, child[:type])
+          child_options = child
+
+          {child_module, child_options}
+        end)
+
+      SolarWeb.SupervisorsLive.Agent.Processes.set_children(name, children)
+    end)
+
+    :ok
+  end
+
+  defp restart_all_processes() do
+    Supervisor.terminate_child(Solar.Supervisor, :"SolarWeb.SupervisorsLive.Supervisor")
+    Supervisor.restart_child(Solar.Supervisor, :"SolarWeb.SupervisorsLive.Supervisor")
+  end
 end
