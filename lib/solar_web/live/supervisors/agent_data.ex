@@ -56,9 +56,9 @@ defmodule SolarWeb.SupervisorsLive.Agent.Data do
 
   def get, do: Agent.get(__MODULE__, fn state -> state end)
 
-  def get_and_update(value) do
-    Agent.get_and_update(__MODULE__, fn _state ->
-      {value, value}
+  def get_and_update(next_state) do
+    Agent.get_and_update(__MODULE__, fn current_state ->
+      {{current_state, next_state}, next_state}
     end)
   end
 end
