@@ -13,6 +13,7 @@ defmodule Solar.Application do
       {Phoenix.PubSub, name: Solar.PubSub},
       SolarWeb.SupervisorsLive.Agent.Data,
       SolarWeb.SupervisorsLive.Agent.Processes,
+      SolarWeb.SupervisorsLive.Presence,
       {SolarWeb.SupervisorsLive.Supervisor,
        name: :"SolarWeb.SupervisorsLive.Supervisor", strategy: :one_for_one},
       SolarWeb.Endpoint
