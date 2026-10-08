@@ -1,7 +1,8 @@
 defmodule SolarWeb.SupervisorsLive.Index do
   use SolarWeb, :live_view
 
-  @pubsub_topic "supervisors:updated"
+  @pubsub_topic_data "supervisors:data:updated"
+  @pubsub_topic_status SolarWeb.SupervisorsLive.Presence.pubsub_topic()
 
   @impl true
   def mount(params, _session, socket) do
@@ -9,7 +10,7 @@ defmodule SolarWeb.SupervisorsLive.Index do
       socket
       |> assign(:params, params)
       |> when_connected_push_event_data()
-      |> when_connected_subscribe_to_pubsub_topic()
+      |> when_connected_subscribe_to_pubsub_topics()
 
     {:ok, socket}
   end
@@ -17,15 +18,19 @@ defmodule SolarWeb.SupervisorsLive.Index do
   @impl true
   def handle_event("data", params, socket) do
     {previous, next} = get_and_update_data(params)
-    :ok = Phoenix.PubSub.broadcast(Solar.PubSub, @pubsub_topic, {:updated, next})
+    :ok = Phoenix.PubSub.broadcast(Solar.PubSub, @pubsub_topic_data, {@pubsub_topic_data, next})
     maybe_reconcile_processes(previous, next)
 
     {:noreply, socket}
   end
 
   @impl true
-  def handle_info({:updated, data}, socket) do
+  def handle_info({@pubsub_topic_data, data}, socket) do
     {:noreply, push_data_event(socket, data)}
+  end
+
+  def handle_info({@pubsub_topic_status, status}, socket) do
+    {:noreply, push_status_event(socket, status)}
   end
 
   # Helpers
@@ -38,9 +43,10 @@ defmodule SolarWeb.SupervisorsLive.Index do
     end
   end
 
-  defp when_connected_subscribe_to_pubsub_topic(socket) do
+  defp when_connected_subscribe_to_pubsub_topics(socket) do
     if connected?(socket) do
-      :ok = Phoenix.PubSub.subscribe(Solar.PubSub, @pubsub_topic)
+      :ok = Phoenix.PubSub.subscribe(Solar.PubSub, @pubsub_topic_data)
+      :ok = Phoenix.PubSub.subscribe(Solar.PubSub, @pubsub_topic_status)
       socket
     else
       socket
@@ -49,6 +55,10 @@ defmodule SolarWeb.SupervisorsLive.Index do
 
   def push_data_event(socket, data) do
     push_event(socket, "data", data)
+  end
+
+  def push_status_event(socket, data) do
+    push_event(socket, "status", data)
   end
 
   def get_data do

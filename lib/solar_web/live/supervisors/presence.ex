@@ -7,7 +7,13 @@ defmodule SolarWeb.SupervisorsLive.Presence do
     defstruct [:status]
   end
 
-  def topic, do: "supervisors"
+  @topic "supervisors"
+
+  @pubsub_topic "supervisors:status:updated"
+
+  def topic, do: @topic
+
+  def pubsub_topic, do: @pubsub_topic
 
   def list, do: SolarWeb.SupervisorsLive.Presence.list(topic())
 
@@ -37,5 +43,24 @@ defmodule SolarWeb.SupervisorsLive.Presence do
         fn current -> Map.merge(current, metadata) end
       )
     end)
+  end
+
+  # Client functions
+
+  def init(_opts \\ []) do
+    {:ok, %{}}
+  end
+
+  def handle_metas(_topic, _data, presences, state) do
+    status =
+      Map.new(presences, fn {key, values} ->
+        values = Enum.map(values, &Map.drop(&1, [:__struct__, :phx_ref, :phx_ref_prev]))
+
+        {key, values}
+      end)
+
+    :ok = Phoenix.PubSub.broadcast(Solar.PubSub, pubsub_topic(), {@pubsub_topic, status})
+
+    {:ok, state}
   end
 end
