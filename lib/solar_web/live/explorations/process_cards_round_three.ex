@@ -50,8 +50,8 @@ defmodule SolarWeb.ExplorationsLive.ProcessCardsRoundThree do
         %{label: "+ GenServer", hint: "A child GenServer you can crash"}
       ]
     },
-    worker: %{
-      kind: :worker,
+    genserver: %{
+      kind: :genserver,
       label: "GenServer 4",
       order: "#3/3",
       kind_name: "GenServer",
@@ -127,7 +127,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCardsRoundThree do
     }
   }
 
-  @kinds [:supervisor, :worker, :producer, :consumer]
+  @kinds [:supervisor, :genserver, :producer, :consumer]
   @states [:running, :starting, :down, :none]
 
   @state_styles %{
@@ -180,7 +180,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCardsRoundThree do
      socket
      |> assign(:page_title, "Process cards, round three")
      |> assign(:sup, @nodes.supervisor)
-     |> assign(:gen, @nodes.worker)
+     |> assign(:gen, @nodes.genserver)
      |> assign(:nodes, @nodes)
      |> assign(:kinds, @kinds)
      |> assign(:states, @states)

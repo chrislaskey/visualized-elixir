@@ -15,7 +15,7 @@ import {useState} from "react"
 // concatenation.
 export const KIND_ICONS = {
   supervisor: "hero-square-3-stack-3d-mini",
-  worker: "hero-cube-mini",
+  genserver: "hero-cube-mini",
 }
 
 export const STATE_STYLES = {

@@ -44,8 +44,13 @@ defmodule SolarWeb.SupervisorsLive.Supervisor do
 
   @impl true
   def init(opts) do
-    children = Keyword.get(opts, :children, [])
     strategy = Keyword.fetch!(opts, :strategy)
+    name = Keyword.fetch!(opts, :name)
+
+    children =
+      Keyword.get(opts, :children, SolarWeb.SupervisorsLive.Agent.Processes.get_children(name))
+
+    {:ok, _} = SolarWeb.SupervisorsLive.Agent.Processes.set_children(name, children)
 
     Supervisor.init(children, strategy: strategy)
   end
