@@ -38,25 +38,41 @@ defmodule SolarWeb.SupervisorsLive.Supervisor do
 
   def start_link(opts \\ []) do
     name = Keyword.fetch!(opts, :name)
-    seed_data = SolarWeb.SupervisorsLive.Agent.Data.get()
-
-    :ok = SolarWeb.SupervisorsLive.Processes.parse_and_store_child_processes(seed_data)
+    update_processes_agent_with_latest_structure()
 
     Supervisor.start_link(__MODULE__, opts, name: name)
   end
 
+  def update_processes_agent_with_latest_structure do
+    data = SolarWeb.SupervisorsLive.Agent.Data.get()
+    :ok = SolarWeb.SupervisorsLive.Processes.parse_and_store_child_processes(data)
+  end
+
+  @doc """
+  This module is used for both the top-level supervisor AND and child supervisor nodes
+  added to the ReactFlow visualization. It has a slightly more complex init process because
+  the different callers will have different amounts of data to pass in.
+
+  For child supervisor nodes, all the data will be passed in through `opts` from data
+  that's stored in the Processes agent.
+
+  The top-level supervisor will only have `:name` and `:strategy` defined in
+  `application.ex` that gets passed in. It still needs to lookup the children
+  from the Processes agent, which is situationally loaded using `get_lazy`.
+  """
   @impl true
   def init(opts) do
     name = Keyword.fetch!(opts, :name)
     strategy = Keyword.fetch!(opts, :strategy)
-    default_children = SolarWeb.SupervisorsLive.Agent.Processes.get_children(name)
-    children = Keyword.get(opts, :children, default_children)
-
-    {:ok, _} = SolarWeb.SupervisorsLive.Agent.Processes.set_children(name, children)
+    children = Keyword.get_lazy(opts, :children, fn -> get_children_from_agent(name) end)
 
     SolarWeb.SupervisorsLive.Presence.track_pid(self(), name, %{status: "starting"})
     SolarWeb.SupervisorsLive.Presence.update_pid(self(), name, %{status: "running"}, after: 500)
 
     Supervisor.init(children, strategy: strategy)
+  end
+
+  def get_children_from_agent(name) do
+    SolarWeb.SupervisorsLive.Agent.Processes.get_children(name)
   end
 end

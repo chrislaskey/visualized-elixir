@@ -19,7 +19,7 @@ defmodule SolarWeb.SupervisorsLive.Index do
   def handle_event("data", params, socket) do
     {previous, next} = get_and_update_data(params)
     :ok = Phoenix.PubSub.broadcast(Solar.PubSub, @pubsub_topic_data, {@pubsub_topic_data, next})
-    maybe_reconcile_processes(previous, next)
+    maybe_update_processes(previous, next)
 
     {:noreply, socket}
   end
@@ -77,9 +77,9 @@ defmodule SolarWeb.SupervisorsLive.Index do
 
   # Helpers - Processes
 
-  defp maybe_reconcile_processes(previous, next) do
+  defp maybe_update_processes(previous, next) do
     if processes_changed?(previous, next) do
-      SolarWeb.SupervisorsLive.Processes.reconcile(previous, next)
+      SolarWeb.SupervisorsLive.Processes.update(next)
     end
   end
 

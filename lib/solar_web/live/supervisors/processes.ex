@@ -1,13 +1,26 @@
 defmodule SolarWeb.SupervisorsLive.Processes do
-  def reconcile(_previous, next) do
-    :ok = parse_and_store_child_processes(next)
-    :ok = restart_all_processes()
+  @root_process_name :"SolarWeb.SupervisorsLive.Supervisor"
+
+  def root_process_name, do: @root_process_name
+
+  def update(next) do
+    parse_and_store_child_processes(next)
+    update_changed_processes()
   end
 
   def parse_and_store_child_processes(data) do
     data
     |> parse_child_processes_by_parent()
     |> store_child_processes_by_parent_in_agent()
+  end
+
+  def update_changed_processes do
+    restart_all_processes()
+  end
+
+  def restart_all_processes() do
+    Supervisor.terminate_child(Solar.Supervisor, root_process_name())
+    Supervisor.restart_child(Solar.Supervisor, root_process_name())
   end
 
   # Helpers
@@ -73,12 +86,6 @@ defmodule SolarWeb.SupervisorsLive.Processes do
       SolarWeb.SupervisorsLive.Agent.Processes.set_children(name, children)
     end)
 
-    :ok
-  end
-
-  defp restart_all_processes() do
-    Supervisor.terminate_child(Solar.Supervisor, :"SolarWeb.SupervisorsLive.Supervisor")
-    Supervisor.restart_child(Solar.Supervisor, :"SolarWeb.SupervisorsLive.Supervisor")
     :ok
   end
 end

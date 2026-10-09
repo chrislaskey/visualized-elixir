@@ -15,7 +15,7 @@ defmodule Solar.Application do
       SolarWeb.SupervisorsLive.Agent.Processes,
       SolarWeb.SupervisorsLive.Presence,
       {SolarWeb.SupervisorsLive.Supervisor,
-       name: :"SolarWeb.SupervisorsLive.Supervisor", strategy: :one_for_one},
+       name: SolarWeb.SupervisorsLive.Processes.root_process_name(), strategy: :one_for_one},
       SolarWeb.Endpoint
     ]
 
