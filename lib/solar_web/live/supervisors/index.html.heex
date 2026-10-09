@@ -114,9 +114,25 @@
       return {node, edge}
     }
 
+    // Status
+
+    function toNodeStatus(meta) {
+      if (!meta) return undefined
+
+      return {state: meta.status, restarts: meta.restarts ?? 0, last_exit: meta.last_exit ?? null}
+    }
+
+    function toNodeStatuses(status) {
+      return Object.fromEntries(
+        Object.entries(status ?? {})
+          .map(([id, meta]) => [id, toNodeStatus(meta)])
+          .filter(([, nodeStatus]) => nodeStatus),
+      )
+    }
+
     // Instance
 
-    function ReactFlowInstance({data, browserInstanceId, pushEvent}) {
+    function ReactFlowInstance({data, status, browserInstanceId, pushEvent}) {
       const [nodes, setNodes] = useState(() => data.nodes)
       const [edges, setEdges] = useState(() => data.edges)
       const lastSynced = useRef(encodeForComparison(toServerData(data.nodes, data.edges)))
@@ -145,9 +161,10 @@
         pushEvent("data", {...next, client_id: browserInstanceId})
       }, [nodes, edges, browserInstanceId, pushEvent])
 
-      // Future: server status will be passed in separately and layer on at render time so it never enters `nodes` state and
-      // therefore never enters the snapshot. Custom nodes read it as data.status.
-      const statuses = {}
+      // Server status is layered on at render time so it never enters `nodes`
+      // state and therefore never enters the snapshot pushed back to the
+      // server. Custom nodes read it as data.status.
+      const statuses = useMemo(() => toNodeStatuses(status), [status])
       const displayNodes = useMemo(
         () => nodes.map(node => ({...node, data: {...node.data, status: statuses[node.id]}})),
         [nodes, statuses],
@@ -195,14 +212,19 @@
 
     // Instance lifecycle
 
-    function mount(el, {browserInstanceId, pushEvent, data}) {
+    function mount(el, {browserInstanceId, pushEvent, data, status}) {
       const root = createRoot(el)
-      let current = {data}
+      let current = {data, status}
 
       const render = () =>
         root.render(
           <ReactFlowProvider>
-            <ReactFlowInstance browserInstanceId={browserInstanceId} pushEvent={pushEvent} data={current.data} />
+            <ReactFlowInstance
+              browserInstanceId={browserInstanceId}
+              pushEvent={pushEvent}
+              data={current.data}
+              status={current.status}
+            />
           </ReactFlowProvider>
         )
 
@@ -211,6 +233,10 @@
       return {
         setData: data => {
           current = {...current, data}
+          render()
+        },
+        setStatus: status => {
+          current = {...current, status}
           render()
         },
         unmount: () => root.unmount()
@@ -222,6 +248,7 @@
     export default {
       mounted() {
         this.browserInstanceId = crypto.randomUUID()
+        this.status = {}
 
         const pushEvent = (event, payload) => this.pushEvent(event, payload)
 
@@ -229,8 +256,18 @@
           if (this.reactFlowInstance) {
             this.reactFlowInstance.setData(data)
           } else {
-            this.reactFlowInstance = mount(this.el, {browserInstanceId: this.browserInstanceId, pushEvent, data})
+            this.reactFlowInstance = mount(this.el, {
+              browserInstanceId: this.browserInstanceId,
+              pushEvent,
+              data,
+              status: this.status,
+            })
           }
+        })
+
+        this.handleEvent("status", status => {
+          this.status = status
+          this.reactFlowInstance?.setStatus(status)
         })
       },
 
