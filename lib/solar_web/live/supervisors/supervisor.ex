@@ -38,6 +38,9 @@ defmodule SolarWeb.SupervisorsLive.Supervisor do
 
   def start_link(opts \\ []) do
     name = Keyword.fetch!(opts, :name)
+    seed_data = SolarWeb.SupervisorsLive.Agent.Data.get()
+
+    :ok = SolarWeb.SupervisorsLive.Processes.parse_and_store_child_processes(seed_data)
 
     Supervisor.start_link(__MODULE__, opts, name: name)
   end
@@ -52,7 +55,7 @@ defmodule SolarWeb.SupervisorsLive.Supervisor do
     {:ok, _} = SolarWeb.SupervisorsLive.Agent.Processes.set_children(name, children)
 
     SolarWeb.SupervisorsLive.Presence.track_pid(self(), name, %{status: "starting"})
-    SolarWeb.SupervisorsLive.Presence.update_pid(self(), name, %{status: "running"}, after: 2_000)
+    SolarWeb.SupervisorsLive.Presence.update_pid(self(), name, %{status: "running"}, after: 500)
 
     Supervisor.init(children, strategy: strategy)
   end

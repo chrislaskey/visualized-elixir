@@ -17,6 +17,12 @@ defmodule SolarWeb.SupervisorsLive.Presence do
 
   def list, do: SolarWeb.SupervisorsLive.Presence.list(topic())
 
+  def status do
+    list()
+    |> Map.new(fn {key, value} -> {key, Map.get(value, :metas)} end)
+    |> to_status()
+  end
+
   # Process functions
 
   def track_pid(pid, name, metadata, options \\ []) do
@@ -52,15 +58,23 @@ defmodule SolarWeb.SupervisorsLive.Presence do
   end
 
   def handle_metas(_topic, _data, presences, state) do
-    status =
-      Map.new(presences, fn {key, values} ->
-        values = Enum.map(values, &Map.drop(&1, [:__struct__, :phx_ref, :phx_ref_prev]))
-
-        {key, values}
-      end)
+    status = to_status(presences)
 
     :ok = Phoenix.PubSub.broadcast(Solar.PubSub, pubsub_topic(), {@pubsub_topic, status})
 
     {:ok, state}
+  end
+
+  # Helpers
+
+  def to_status(presences) do
+    Map.new(presences, fn {key, values} ->
+      value =
+        values
+        |> hd()
+        |> Map.drop([:__struct__, :phx_ref, :phx_ref_prev])
+
+      {key, value}
+    end)
   end
 end
