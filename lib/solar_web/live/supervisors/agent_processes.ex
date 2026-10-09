@@ -17,6 +17,10 @@ defmodule SolarWeb.SupervisorsLive.Agent.Processes do
 
   # Functions
 
+  def get do
+    Agent.get(__MODULE__, fn state -> state end)
+  end
+
   def get(key) do
     Agent.get(__MODULE__, fn state ->
       Map.get(state, key)

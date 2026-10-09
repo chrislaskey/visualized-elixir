@@ -3,9 +3,12 @@ defmodule SolarWeb.SupervisorsLive.Processes do
 
   def root_process_name, do: @root_process_name
 
-  def update(next) do
-    parse_and_store_child_processes(next)
-    update_changed_processes()
+  def update(data) do
+    all_prev_configs = SolarWeb.SupervisorsLive.Agent.Processes.get()
+    parse_and_store_child_processes(data)
+    all_next_configs = SolarWeb.SupervisorsLive.Agent.Processes.get()
+
+    update_changed_processes(all_prev_configs, all_next_configs)
   end
 
   def parse_and_store_child_processes(data) do
@@ -14,13 +17,26 @@ defmodule SolarWeb.SupervisorsLive.Processes do
     |> store_child_processes_by_parent_in_agent()
   end
 
-  def update_changed_processes do
-    restart_all_processes()
-  end
-
   def restart_all_processes() do
     Supervisor.terminate_child(Solar.Supervisor, root_process_name())
     Supervisor.restart_child(Solar.Supervisor, root_process_name())
+  end
+
+  def terminate_process(parent, name) do
+    if Process.whereis(name) do
+      Supervisor.terminate_child(parent, name)
+    end
+  end
+
+  def start_process(parent, name) do
+    if Process.whereis(name) do
+      Supervisor.restart_child(parent, name)
+    end
+  end
+
+  def restart_process(parent, name) do
+    terminate_process(parent, name)
+    start_process(parent, name)
   end
 
   # Helpers
@@ -87,5 +103,53 @@ defmodule SolarWeb.SupervisorsLive.Processes do
     end)
 
     :ok
+  end
+
+  def update_changed_processes(all_prev_configs, all_next_configs) do
+    parent_name = Solar.Supervisor
+    name = @root_process_name
+
+    walk_structure(all_prev_configs, all_next_configs, parent_name, name)
+  end
+
+  defp walk_structure(all_prev_configs, all_next_configs, parent_name, name) do
+    prev_config = Map.get(all_prev_configs, name)
+    next_config = Map.get(all_next_configs, name)
+
+    current_process = Process.whereis(name)
+    children_names = get_combined_children_names(next_config, current_process, name)
+
+    for child_name <- children_names do
+      walk_structure(all_prev_configs, all_next_configs, name, child_name)
+    end
+  end
+
+  defp get_combined_children_names(next_config, current_process, name) do
+    current_children_names = get_current_children_names(name, current_process)
+    next_children_names = get_next_config_children_names(next_config)
+
+    next_children_names
+    |> Kernel.++(current_children_names)
+    |> Enum.uniq()
+  end
+
+  defp get_current_children_names(_name, nil), do: []
+
+  defp get_current_children_names(name, _process) do
+    name
+    |> SolarWeb.SupervisorsLive.Supervisor.which_children()
+    |> Enum.map(fn entry -> elem(entry, 0) end)
+  end
+
+  def get_next_config_children_names(nil), do: []
+
+  def get_next_config_children_names(next_config) do
+    next_config
+    |> Keyword.get(:children, [])
+    |> Enum.map(fn item ->
+      item
+      |> elem(1)
+      |> Keyword.get(:name)
+    end)
   end
 end
