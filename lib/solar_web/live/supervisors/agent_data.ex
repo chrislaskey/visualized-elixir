@@ -9,7 +9,6 @@ defmodule SolarWeb.SupervisorsLive.Agent.Data do
         "position" => %{"x" => 180, "y" => 0},
         "data" => %{
           "label" => "Supervisor 1",
-          "root" => true,
           "config" => %{"strategy" => "one_for_one"}
         }
       },

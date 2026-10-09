@@ -15,30 +15,44 @@ defmodule SolarWeb.SupervisorsLive.Agent.Processes do
     Agent.start_link(fn -> initial_state end, name: __MODULE__)
   end
 
-  def clear_all_children() do
-    Agent.update(__MODULE__, fn state ->
-      Map.new(state, fn {key, value} ->
-        {key, Map.put(value, :children, [])}
-      end)
+  # Functions
+
+  def get(key) do
+    Agent.get(__MODULE__, fn state ->
+      Map.get(state, key)
     end)
   end
+
+  def set(key, value) do
+    Agent.get_and_update(__MODULE__, fn state ->
+      updated = Map.put(state, key, value)
+
+      {updated, updated}
+    end)
+  end
+
+  def clear_all() do
+    Agent.update(__MODULE__, fn _state -> %{} end)
+  end
+
+  # Functions - children
 
   def get_children(key) do
     Agent.get(__MODULE__, fn state ->
       state
-      |> Map.get(key, %{})
-      |> Map.get(:children, [])
+      |> Map.get(key, [])
+      |> Keyword.get(:children, [])
     end)
   end
 
   def set_children(key, value) do
     Agent.get_and_update(__MODULE__, fn state ->
       updated =
-        Map.update(state, key, %{children: value}, fn current ->
-          Map.merge(current, %{children: value})
+        Map.update(state, key, [children: value], fn current ->
+          Keyword.merge(current, children: value)
         end)
 
-      {{:ok, updated}, updated}
+      {updated, updated}
     end)
   end
 end

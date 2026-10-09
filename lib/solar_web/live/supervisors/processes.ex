@@ -70,7 +70,7 @@ defmodule SolarWeb.SupervisorsLive.Processes do
       "consumer" => SolarWeb.SupervisorsLive.Supervisor
     }
 
-    :ok = SolarWeb.SupervisorsLive.Agent.Processes.clear_all_children()
+    :ok = SolarWeb.SupervisorsLive.Agent.Processes.clear_all()
 
     Enum.map(processes_by_parent, fn {key, value} ->
       name = String.to_atom(key)
