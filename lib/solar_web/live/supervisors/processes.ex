@@ -33,15 +33,15 @@ defmodule SolarWeb.SupervisorsLive.Processes do
     end
   end
 
-  def start_process(parent, name) do
+  def start_process(parent, name, spec) do
     if Process.whereis(name) == nil do
-      Supervisor.start_child(parent, name)
+      Supervisor.start_child(parent, spec)
     end
   end
 
-  def restart_process(parent, name) do
+  def restart_process(parent, name, spec) do
     terminate_and_delete_process(parent, name)
-    start_process(parent, name)
+    start_process(parent, name, spec)
   end
 
   # Helpers
@@ -123,60 +123,61 @@ defmodule SolarWeb.SupervisorsLive.Processes do
 
   defp walk_structure(all_prev_configs, all_next_configs, parent_name, name) do
     prev_config = Map.get(all_prev_configs, name)
-    next_config = get_next_config(all_next_configs, parent_name, name)
+    next_spec = get_next_spec(all_next_configs, parent_name, name)
+    next_config = get_next_config(all_next_configs, next_spec, name)
     current_process = Process.whereis(name)
     children_names = get_combined_children_names(next_config, current_process, name)
 
     cond do
-      #
       # Currently running but not in next config
-      next_config == nil && current_process ->
-        dbg(terminate_and_delete_process(parent_name, name))
-
+      next_config == nil && current_process -> terminate_and_delete_process(parent_name, name)
       #
       # Not current running but in next config
-      next_config && current_process == nil ->
-        dbg(start_process(parent_name, name))
-
+      next_config && current_process == nil -> start_process(parent_name, name, next_spec)
       #
       # Currently running and in next config but different previous config
-      process_configs_different?(prev_config, next_config) ->
-        dbg(restart_process(parent_name, name))
-
+      process_configs_different?(prev_config, next_config) -> restart_process(parent_name, name, next_spec)
       #
       # Currently running and in next config and same previous config
-      Enum.any?(children_names) ->
-        dbg(walk_structure_for_children(all_prev_configs, all_next_configs, name, children_names))
-
+      Enum.any?(children_names) -> walk_structure_for_children(all_prev_configs, all_next_configs, name, children_names)
       #
       # End of a node in a tree
-      :else ->
-        :ok
+      :else -> :ok
     end
   end
 
-  defp get_next_config(all_next_configs, parent_name, name) do
-    # The `prev_config` has all the information under one key. But until the processes
-    # are actually created, the `next_config` only has the parent -> children
-    # relationships. So in this case, we lookup both and merge them together.
+  defp get_next_spec(all_next_configs, parent_name, name) do
+    # Returns the child_spec for the next process. In the `next_config` this is
+    # defined in the parent entry since it's the one that creates the child.
     #
-    # Returns `nil` when not found to mirror the `Map.get()` behaviour
-    parent_config =
-      if Map.has_key?(all_next_configs, parent_name) do
-        all_next_configs
-        |> Map.get(parent_name)
-        |> Keyword.get(:children, [])
-        |> Enum.find_value(fn entry ->
-          options = elem(entry, 1)
+    # Returns `nil` when not found.
+    if Map.has_key?(all_next_configs, parent_name) do
+      all_next_configs
+      |> Map.get(parent_name)
+      |> Keyword.get(:children, [])
+      |> Enum.find(fn entry ->
+        options = elem(entry, 1)
 
-          if Keyword.get(options, :name) == name, do: options, else: false
-        end)
-        |> Kernel.||([])
+        Keyword.get(options, :name) == name
+      end)
+    end
+  end
+
+  defp get_next_config(all_next_configs, next_spec, name) do
+    # The `next_config` defines the information in its parent entry. It's not
+    # until the process is created that it also gets written into the process
+    # entry which is why it's available under the process name in `prev_config`
+    # but not in `next_config.`
+    #
+    # Returns `nil` when not found.
+    parent_config =
+      if next_spec do
+        elem(next_spec, 1)
       else
         []
       end
 
-    process_config = 
+    process_config =
       if Map.has_key?(all_next_configs, name) do
         Map.get(all_next_configs, name)
       else
