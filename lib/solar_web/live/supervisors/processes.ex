@@ -22,20 +22,25 @@ defmodule SolarWeb.SupervisorsLive.Processes do
     Supervisor.restart_child(Solar.Supervisor, root_process_name())
   end
 
-  def terminate_process(parent, name) do
+  def terminate_and_delete_process(parent, name) do
     if Process.whereis(name) do
+      # `terminate_child` stops the running process. The process' child spec is kept in the supervisor.
+      # This is useful when you may restart a process later using `restart_child`. But in our case we
+      # want to remove the spec, since it contains information like `strategy` that might be different the
+      # next time it's recreated. So we also have to `delete_child` which removes the child spec.
       Supervisor.terminate_child(parent, name)
+      Supervisor.delete_child(parent, name)
     end
   end
 
   def start_process(parent, name) do
-    if Process.whereis(name) do
-      Supervisor.restart_child(parent, name)
+    if Process.whereis(name) == nil do
+      Supervisor.start_child(parent, name)
     end
   end
 
   def restart_process(parent, name) do
-    terminate_process(parent, name)
+    terminate_and_delete_process(parent, name)
     start_process(parent, name)
   end
 
@@ -106,19 +111,98 @@ defmodule SolarWeb.SupervisorsLive.Processes do
   end
 
   def update_changed_processes(all_prev_configs, all_next_configs) do
-    parent_name = Solar.Supervisor
-    name = @root_process_name
+    root_name = @root_process_name
+    root_process = Process.whereis(root_name)
+    root_next_config = Map.get(all_next_configs, root_name)
+    root_children_names = get_combined_children_names(root_next_config, root_process, root_name)
 
-    walk_structure(all_prev_configs, all_next_configs, parent_name, name)
+    for child_name <- root_children_names do
+      walk_structure(all_prev_configs, all_next_configs, root_name, child_name)
+    end
   end
 
   defp walk_structure(all_prev_configs, all_next_configs, parent_name, name) do
     prev_config = Map.get(all_prev_configs, name)
-    next_config = Map.get(all_next_configs, name)
-
+    next_config = get_next_config(all_next_configs, parent_name, name)
     current_process = Process.whereis(name)
     children_names = get_combined_children_names(next_config, current_process, name)
 
+    cond do
+      #
+      # Currently running but not in next config
+      next_config == nil && current_process ->
+        dbg(terminate_and_delete_process(parent_name, name))
+
+      #
+      # Not current running but in next config
+      next_config && current_process == nil ->
+        dbg(start_process(parent_name, name))
+
+      #
+      # Currently running and in next config but different previous config
+      process_configs_different?(prev_config, next_config) ->
+        dbg(restart_process(parent_name, name))
+
+      #
+      # Currently running and in next config and same previous config
+      Enum.any?(children_names) ->
+        dbg(walk_structure_for_children(all_prev_configs, all_next_configs, name, children_names))
+
+      #
+      # End of a node in a tree
+      :else ->
+        :ok
+    end
+  end
+
+  defp get_next_config(all_next_configs, parent_name, name) do
+    # The `prev_config` has all the information under one key. But until the processes
+    # are actually created, the `next_config` only has the parent -> children
+    # relationships. So in this case, we lookup both and merge them together.
+    #
+    # Returns `nil` when not found to mirror the `Map.get()` behaviour
+    parent_config =
+      if Map.has_key?(all_next_configs, parent_name) do
+        all_next_configs
+        |> Map.get(parent_name)
+        |> Keyword.get(:children, [])
+        |> Enum.find_value(fn entry ->
+          options = elem(entry, 1)
+
+          if Keyword.get(options, :name) == name, do: options, else: false
+        end)
+        |> Kernel.||([])
+      else
+        []
+      end
+
+    process_config = 
+      if Map.has_key?(all_next_configs, name) do
+        Map.get(all_next_configs, name)
+      else
+        []
+      end
+
+    combined_config = Keyword.merge(parent_config, process_config)
+
+    if Enum.any?(combined_config) do
+      combined_config
+    else
+      nil
+    end
+  end
+
+  defp process_configs_different?(nil, _next_config), do: true
+  defp process_configs_different?(_prev_config, nil), do: true
+
+  defp process_configs_different?(prev_config, next_config) do
+    prev = Keyword.drop(prev_config, [:label, :position, :id, :children]) |> Enum.sort()
+    next = Keyword.drop(next_config, [:label, :position, :id, :children]) |> Enum.sort()
+
+    prev != next
+  end
+
+  defp walk_structure_for_children(all_prev_configs, all_next_configs, name, children_names) do
     for child_name <- children_names do
       walk_structure(all_prev_configs, all_next_configs, name, child_name)
     end
