@@ -1,8 +1,4 @@
 defmodule SolarWeb.SupervisorsLive.Processes do
-  @root_process_name :"SolarWeb.SupervisorsLive.Supervisor"
-
-  def root_process_name, do: @root_process_name
-
   def update(data) do
     all_prev_configs = SolarWeb.SupervisorsLive.Agent.Processes.get()
     parse_and_store_child_processes(data)
@@ -13,13 +9,15 @@ defmodule SolarWeb.SupervisorsLive.Processes do
 
   def parse_and_store_child_processes(data) do
     data
-    |> parse_child_processes_by_parent()
-    |> store_child_processes_by_parent_in_agent()
+    |> parse_child_processes()
+    |> store_child_processes_in_agent()
   end
 
   def restart_all_processes() do
-    Supervisor.terminate_child(Solar.Supervisor, root_process_name())
-    Supervisor.restart_child(Solar.Supervisor, root_process_name())
+    root_process_name = SolarWeb.SupervisorsLive.Supervisor.root_process_name()
+
+    Supervisor.terminate_child(Solar.Supervisor, root_process_name)
+    Supervisor.restart_child(Solar.Supervisor, root_process_name)
   end
 
   def terminate_and_delete_process(parent, name) do
@@ -46,20 +44,47 @@ defmodule SolarWeb.SupervisorsLive.Processes do
 
   # Helpers
 
-  defp parse_child_processes_by_parent(data) do
+  defp parse_child_processes(data) do
     nodes = Map.get(data, "nodes", [])
     edges = Map.get(data, "edges", [])
     edges_lookup = Map.new(edges, fn edge -> {edge["target"], edge["source"]} end)
 
-    Enum.reduce(nodes, %{}, fn process_data, acc ->
+    process_type_to_module_lookup = %{
+      "supervisor" => SolarWeb.SupervisorsLive.Supervisor,
+      "genserver" => SolarWeb.SupervisorsLive.Supervisor,
+      "producer" => SolarWeb.SupervisorsLive.Supervisor,
+      "consumer" => SolarWeb.SupervisorsLive.Supervisor
+    }
+
+    nodes_lookup =
+      nodes
+      |> Map.new(fn process_data ->
+        process_name = Map.get(process_data, "id")
+
+        {process_name, parse_child_process_options(process_name, process_data)}
+      end)
+      |> with_root_child_process_options()
+
+    Enum.reduce(nodes, nodes_lookup, fn process_data, acc ->
       process_name = Map.get(process_data, "id")
       parent_name = Map.get(edges_lookup, process_name, "SolarWeb.SupervisorsLive.Supervisor")
-      process_options = parse_child_process_options(process_name, process_data)
+      child_options = nodes_lookup |> Map.fetch!(process_name) |> Keyword.drop([:children])
+      child_module = Map.get(process_type_to_module_lookup, child_options[:type])
+      child_entry = {child_module, child_options}
 
-      Map.update(acc, parent_name, %{process_name => process_options}, fn existing ->
-        Map.put(existing, process_name, process_options)
+      Map.update!(acc, parent_name, fn node ->
+        Keyword.update(node, :children, [child_entry], fn children ->
+          children ++ [child_entry]
+        end)
       end)
     end)
+  end
+
+  defp with_root_child_process_options(nodes_lookup) do
+    name = to_string(SolarWeb.SupervisorsLive.Supervisor.root_process_name())
+    child_options = elem(SolarWeb.SupervisorsLive.Supervisor.child_definition(), 1)
+
+    Map.put(nodes_lookup, name, child_options)
   end
 
   defp parse_child_process_options(process_name, process_data) do
@@ -75,7 +100,10 @@ defmodule SolarWeb.SupervisorsLive.Processes do
       |> Map.new(fn {key, value} -> {String.to_atom(key), value} end)
       |> Enum.into([])
 
-    with_new_keys = Keyword.put(as_keyword_list, :name, String.to_atom(process_name))
+    with_new_keys =
+      as_keyword_list
+      |> Keyword.put(:name, String.to_atom(process_name))
+      |> Keyword.put(:children, [])
 
     with_atom_values =
       Keyword.replace_lazy(with_new_keys, :strategy, fn value -> String.to_atom(value) end)
@@ -83,35 +111,16 @@ defmodule SolarWeb.SupervisorsLive.Processes do
     with_atom_values
   end
 
-  defp store_child_processes_by_parent_in_agent(processes_by_parent) do
-    process_type_to_module_lookup = %{
-      "supervisor" => SolarWeb.SupervisorsLive.Supervisor,
-      "genserver" => SolarWeb.SupervisorsLive.Supervisor,
-      "producer" => SolarWeb.SupervisorsLive.Supervisor,
-      "consumer" => SolarWeb.SupervisorsLive.Supervisor
-    }
-
+  defp store_child_processes_in_agent(process_data) do
     :ok = SolarWeb.SupervisorsLive.Agent.Processes.clear_all()
 
-    Enum.map(processes_by_parent, fn {key, value} ->
-      name = String.to_atom(key)
-
-      children =
-        Enum.map(value, fn {_, child} ->
-          child_module = Map.get(process_type_to_module_lookup, child[:type])
-          child_options = child
-
-          {child_module, child_options}
-        end)
-
-      SolarWeb.SupervisorsLive.Agent.Processes.set_children(name, children)
+    Enum.map(process_data, fn {key, values} ->
+      SolarWeb.SupervisorsLive.Agent.Processes.set(String.to_atom(key), values)
     end)
-
-    :ok
   end
 
   def update_changed_processes(all_prev_configs, all_next_configs) do
-    root_name = @root_process_name
+    root_name = SolarWeb.SupervisorsLive.Supervisor.root_process_name()
     root_process = Process.whereis(root_name)
     root_next_config = Map.get(all_next_configs, root_name)
     root_children_names = get_combined_children_names(root_next_config, root_process, root_name)
@@ -123,8 +132,8 @@ defmodule SolarWeb.SupervisorsLive.Processes do
 
   defp walk_structure(all_prev_configs, all_next_configs, parent_name, name) do
     prev_config = Map.get(all_prev_configs, name)
+    next_config = Map.get(all_next_configs, name)
     next_spec = get_next_spec(all_next_configs, parent_name, name)
-    next_config = get_next_config(all_next_configs, next_spec, name)
     current_process = Process.whereis(name)
     children_names = get_combined_children_names(next_config, current_process, name)
 
@@ -160,36 +169,6 @@ defmodule SolarWeb.SupervisorsLive.Processes do
 
         Keyword.get(options, :name) == name
       end)
-    end
-  end
-
-  defp get_next_config(all_next_configs, next_spec, name) do
-    # The `next_config` defines the information in its parent entry. It's not
-    # until the process is created that it also gets written into the process
-    # entry which is why it's available under the process name in `prev_config`
-    # but not in `next_config.`
-    #
-    # Returns `nil` when not found.
-    parent_config =
-      if next_spec do
-        elem(next_spec, 1)
-      else
-        []
-      end
-
-    process_config =
-      if Map.has_key?(all_next_configs, name) do
-        Map.get(all_next_configs, name)
-      else
-        []
-      end
-
-    combined_config = Keyword.merge(parent_config, process_config)
-
-    if Enum.any?(combined_config) do
-      combined_config
-    else
-      nil
     end
   end
 

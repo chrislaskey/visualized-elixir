@@ -1,6 +1,13 @@
 defmodule SolarWeb.SupervisorsLive.Supervisor do
   use Supervisor
 
+  @root_process_name :"SolarWeb.SupervisorsLive.Supervisor"
+  @child_definition {SolarWeb.SupervisorsLive.Supervisor,
+                     name: @root_process_name, strategy: :one_for_one, type: "supervisor"}
+
+  def child_definition, do: @child_definition
+  def root_process_name, do: @root_process_name
+
   # Children
 
   def start_child(supervisor, child) do
@@ -53,7 +60,7 @@ defmodule SolarWeb.SupervisorsLive.Supervisor do
     children = SolarWeb.SupervisorsLive.Agent.Processes.get_children(name)
     process = Keyword.put(opts, :children, children)
 
-    SolarWeb.SupervisorsLive.Agent.Processes.set(name, process)
+    SolarWeb.SupervisorsLive.Agent.Processes.merge(name, process)
     SolarWeb.SupervisorsLive.Presence.track_pid(self(), name, %{status: "starting"})
     SolarWeb.SupervisorsLive.Presence.update_pid(self(), name, %{status: "running"}, after: 500)
 

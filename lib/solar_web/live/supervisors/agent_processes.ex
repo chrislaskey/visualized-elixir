@@ -35,6 +35,17 @@ defmodule SolarWeb.SupervisorsLive.Agent.Processes do
     end)
   end
 
+  def merge(key, value) do
+    Agent.get_and_update(__MODULE__, fn state ->
+      updated =
+        Map.update(state, key, value, fn current ->
+          Keyword.merge(current, value)
+        end)
+
+      {updated, updated}
+    end)
+  end
+
   def clear_all() do
     Agent.update(__MODULE__, fn _state -> %{} end)
   end

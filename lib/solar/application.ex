@@ -15,8 +15,7 @@ defmodule Solar.Application do
       SolarWeb.SupervisorsLive.Agent.Processes,
       {Task, fn -> process_initial_agent_data_and_update_agent_processes() end},
       SolarWeb.SupervisorsLive.Presence,
-      {SolarWeb.SupervisorsLive.Supervisor,
-       name: SolarWeb.SupervisorsLive.Processes.root_process_name(), strategy: :one_for_one, type: "supervisor"},
+      SolarWeb.SupervisorsLive.Supervisor.child_definition(),
       SolarWeb.Endpoint
     ]
 
