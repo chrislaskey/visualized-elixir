@@ -404,8 +404,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCards do
 
     ~H"""
     <div :if={!@node.attached} class="flex items-center gap-1.5 text-[11px] text-base-content/50">
-      <span class="size-2 rounded-full border border-dashed border-base-content/40" />
-      not supervised, so not running
+      <span class="size-2 rounded-full border border-dashed border-base-content/40" /> not supervised, so not running
     </div>
     <div :if={@node.attached} class="space-y-0.5 text-[11px]">
       <div class="flex items-center gap-1.5">
@@ -1922,9 +1921,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCards do
               </div>
               <div class="text-[11px] text-base-content/60">
                 <span :if={node.attached}>
-                  <span class={["font-medium", status_style(node.status).text]}>{status_style(
-                    node.status
-                  ).label}</span>
+                  <span class={["font-medium", status_style(node.status).text]}>{status_style(node.status).label}</span>
                   · <span class="font-mono">{restarts_of(node)}</span>
                   restarts · <span class="font-mono">{node.status.pid}</span>
                 </span>
@@ -2043,8 +2040,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCards do
           <div class="mt-1 text-stone-400">
             strategy: <span class="text-violet-300">:one_for_all</span>
             ▾<br /> max_restarts: <span class="text-stone-200">3</span>, max_seconds:
-            <span class="text-stone-200">5</span><br />
-            restarts: <span class="text-stone-200">2</span>, last_exit:
+            <span class="text-stone-200">5</span><br /> restarts: <span class="text-stone-200">2</span>, last_exit:
             <span class="text-rose-300">:killed</span>
           </div>
           <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-stone-700 pt-1.5">

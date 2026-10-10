@@ -371,8 +371,7 @@ defmodule SolarWeb.ExplorationsLive.ProcessCardsRoundThree do
       <span class={["size-1.5 shrink-0 rounded-full", @style.dot]} />
       <span class={["font-medium", @style.text]}>{@style.label}</span>
       <span>· {@node.restarts} restarts</span>
-      <span :if={@node.last_exit} class="truncate">· last
-      <span class="font-mono">{@node.last_exit}</span></span>
+      <span :if={@node.last_exit} class="truncate">· last <span class="font-mono">{@node.last_exit}</span></span>
     </p>
     """
   end
