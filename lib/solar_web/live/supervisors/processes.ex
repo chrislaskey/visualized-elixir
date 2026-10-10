@@ -56,6 +56,45 @@ defmodule SolarWeb.SupervisorsLive.Processes do
     |> Map.new(fn {key, values} -> {String.to_atom(key), values} end)
   end
 
+  # User actions
+
+  def handle_user_action(id, action) do
+    name = String.to_atom(id)
+    pid = Process.whereis(name)
+    process = SolarWeb.SupervisorsLive.Agent.Processes.get(name)
+    parent_name = SolarWeb.SupervisorsLive.Processes.get_parent_name(name)
+
+    if process do
+      case action do
+        "stop" ->
+          if pid do
+            # Note: the `:shutdown` action is a normal stop, not an abnormal one
+            case process[:type] do
+              "supervisor" -> Supervisor.stop(pid, :shutdown)
+              "genserver" -> GenServer.stop(pid, :shutdown)
+              _ -> Process.exit(pid, :shutdown)
+            end
+          end
+
+        "kill" ->
+          if pid do
+            Process.exit(pid, :kill)
+          end
+
+        "terminate" ->
+          SolarWeb.SupervisorsLive.Processes.terminate(parent_name || Solar.Supervisor, name)
+
+        "restart" ->
+          SolarWeb.SupervisorsLive.Processes.restart_process(parent_name || Solar.Supervisor, name)
+
+        _ ->
+          :not_implemented
+      end
+    end
+
+    :ok
+  end
+
   # Lifecycle functions
 
   def restart_all_processes() do
