@@ -104,8 +104,9 @@ function Stat({label, className = "", title, children}) {
   )
 }
 
-// Status, restarts, last exit. The one place the status word appears.
-export function StatsRow({state = "none", restarts, lastExit}) {
+// Status, restarts, pid. The one place the status word appears. The pid is
+// identity rather than a reading, so it takes the subtitle's quieter style.
+export function StatsRow({state = "none", restarts, pid}) {
   const style = stateStyle(state)
   const supervised = state !== "none"
 
@@ -117,8 +118,8 @@ export function StatsRow({state = "none", restarts, lastExit}) {
       <Stat label="Restarts">
         <span className="font-mono">{supervised ? (restarts ?? 0) : "–"}</span>
       </Stat>
-      <Stat label="Last exit" className="min-w-0" title={lastExit ?? undefined}>
-        <span className="font-mono">{lastExit || "–"}</span>
+      <Stat label="PID" className="min-w-0" title={pid ?? undefined}>
+        <span className="font-mono text-xs text-base-content/60">{pid || "–"}</span>
       </Stat>
     </div>
   )
@@ -182,7 +183,7 @@ export function Drawer({children}) {
  *   subtitle   config summary, e.g. "one_for_all · gives up after 3 in 5s"
  *   state      "running" | "starting" | "down" | "none"
  *   restarts   number
- *   lastExit   string | null
+ *   pid        "#PID<0.332.0>" | null
  *   tabs       which of TABS to show, defaults to all four
  *   panels     {tabId: ReactNode | ({close}) => ReactNode} rendered in the
  *              drawer when that tab is open; the function form gets `close`
@@ -197,7 +198,7 @@ export function ProcessCard({
   subtitle,
   state = "none",
   restarts = 0,
-  lastExit = null,
+  pid = null,
   tabs = TABS,
   panels = {},
   className = "w-72",
@@ -213,7 +214,7 @@ export function ProcessCard({
       <CardHeader icon={icon} state={state} label={label} order={order} kindName={kindName} subtitle={subtitle} />
 
       <div className="px-4 pb-3">
-        <StatsRow state={state} restarts={restarts} lastExit={lastExit} />
+        <StatsRow state={state} restarts={restarts} pid={pid} />
       </div>
 
       <TabBar tabs={tabs} active={open ? active : null} onSelect={setActive} open={open} />
