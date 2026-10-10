@@ -118,7 +118,7 @@
     // Adding children
 
     const CHILD_OFFSET_Y = 260
-    const SIBLING_OFFSET_X = 320
+    const SIBLING_OFFSET_X = 340
 
     const KIND_PREFIX = {supervisor: "sup"}
     const KIND_LABEL = {supervisor: "Supervisor"}
@@ -231,7 +231,20 @@
         setEdges(current => [...current, edge])
       }, [])
 
-      const context = useMemo(() => ({addChild}), [addChild])
+      // Merges `patch` into one node's data.config. The sync effect above
+      // pushes the resulting graph; the server restarts the process whose
+      // options changed.
+      const updateConfig = useCallback((nodeId, patch) => {
+        setNodes(current =>
+          current.map(node =>
+            node.id === nodeId
+              ? {...node, data: {...node.data, config: {...node.data.config, ...patch}}}
+              : node,
+          ),
+        )
+      }, [])
+
+      const context = useMemo(() => ({addChild, updateConfig}), [addChild, updateConfig])
 
       return (
         <ReactFlowContext.Provider value={context}>
