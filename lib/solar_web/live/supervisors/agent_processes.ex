@@ -7,12 +7,23 @@ defmodule SolarWeb.SupervisorsLive.Agent.Processes do
   A Supervisor can be configured at runtime. However, any data sent after the
   initial `init` will be lost if the process is restarted. This agent stores
   the `init` data so on restart the previous state can be used.
+
+  When the UI changes the process structure, the existing data is replaced
+  with the new expected state. Which then the process context uses to rebuild
+  the correct process state.
   """
   use Agent
 
   def start_link(opts \\ []) do
-    initial_state = Keyword.get(opts, :state, %{})
+    initial_state = Keyword.get_lazy(opts, :state, &parse_data_agent_state/0)
+
     Agent.start_link(fn -> initial_state end, name: __MODULE__)
+  end
+
+  def parse_data_agent_state do
+    data = SolarWeb.SupervisorsLive.Agent.Data.get()
+
+    SolarWeb.SupervisorsLive.Processes.parse_child_processes(data)
   end
 
   # Functions

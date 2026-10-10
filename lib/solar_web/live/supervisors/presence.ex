@@ -4,7 +4,7 @@ defmodule SolarWeb.SupervisorsLive.Presence do
     pubsub_server: Solar.PubSub
 
   defmodule Metadata do
-    defstruct [:status]
+    defstruct [:pid, :status]
   end
 
   @topic "supervisors"

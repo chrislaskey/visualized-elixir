@@ -1,4 +1,15 @@
 defmodule SolarWeb.SupervisorsLive.Processes do
+  @moduledoc "Context for Elixir process related management"
+
+  @process_type_to_module_lookup %{
+    "supervisor" => SolarWeb.SupervisorsLive.Supervisor,
+    "genserver" => SolarWeb.SupervisorsLive.Supervisor,
+    "producer" => SolarWeb.SupervisorsLive.Supervisor,
+    "consumer" => SolarWeb.SupervisorsLive.Supervisor
+  }
+
+  # Data functions
+
   def update(data) do
     all_prev_configs = SolarWeb.SupervisorsLive.Agent.Processes.get()
     parse_and_store_child_processes(data)
@@ -12,6 +23,40 @@ defmodule SolarWeb.SupervisorsLive.Processes do
     |> parse_child_processes()
     |> store_child_processes_in_agent()
   end
+
+  def parse_child_processes(data) do
+    nodes = Map.get(data, "nodes", [])
+    edges = Map.get(data, "edges", [])
+    edges_lookup = Map.new(edges, fn edge -> {edge["target"], edge["source"]} end)
+    parent_name_fallback = to_string(SolarWeb.SupervisorsLive.Supervisor.root_process_name())
+
+    nodes_lookup =
+      nodes
+      |> Map.new(fn process_data ->
+        process_name = Map.get(process_data, "id")
+
+        {process_name, parse_child_process_options(process_name, process_data)}
+      end)
+      |> with_root_child_process_options()
+
+    nodes
+    |> Enum.reduce(nodes_lookup, fn process_data, acc ->
+      process_name = Map.get(process_data, "id")
+      parent_name = Map.get(edges_lookup, process_name, parent_name_fallback)
+      child_options = nodes_lookup |> Map.fetch!(process_name) |> Keyword.drop([:label, :position, :id, :children])
+      child_module = Map.get(@process_type_to_module_lookup, child_options[:type])
+      child_entry = {child_module, child_options}
+
+      Map.update!(acc, parent_name, fn node ->
+        Keyword.update(node, :children, [child_entry], fn children ->
+          children ++ [child_entry]
+        end)
+      end)
+    end)
+    |> Map.new(fn {key, values} -> {String.to_atom(key), values} end)
+  end
+
+  # Lifecycle functions
 
   def restart_all_processes() do
     root_process_name = SolarWeb.SupervisorsLive.Supervisor.root_process_name()
@@ -45,42 +90,6 @@ defmodule SolarWeb.SupervisorsLive.Processes do
   end
 
   # Helpers
-
-  defp parse_child_processes(data) do
-    nodes = Map.get(data, "nodes", [])
-    edges = Map.get(data, "edges", [])
-    edges_lookup = Map.new(edges, fn edge -> {edge["target"], edge["source"]} end)
-
-    process_type_to_module_lookup = %{
-      "supervisor" => SolarWeb.SupervisorsLive.Supervisor,
-      "genserver" => SolarWeb.SupervisorsLive.Supervisor,
-      "producer" => SolarWeb.SupervisorsLive.Supervisor,
-      "consumer" => SolarWeb.SupervisorsLive.Supervisor
-    }
-
-    nodes_lookup =
-      nodes
-      |> Map.new(fn process_data ->
-        process_name = Map.get(process_data, "id")
-
-        {process_name, parse_child_process_options(process_name, process_data)}
-      end)
-      |> with_root_child_process_options()
-
-    Enum.reduce(nodes, nodes_lookup, fn process_data, acc ->
-      process_name = Map.get(process_data, "id")
-      parent_name = Map.get(edges_lookup, process_name, "SolarWeb.SupervisorsLive.Supervisor")
-      child_options = nodes_lookup |> Map.fetch!(process_name) |> Keyword.drop([:label, :position, :id, :children])
-      child_module = Map.get(process_type_to_module_lookup, child_options[:type])
-      child_entry = {child_module, child_options}
-
-      Map.update!(acc, parent_name, fn node ->
-        Keyword.update(node, :children, [child_entry], fn children ->
-          children ++ [child_entry]
-        end)
-      end)
-    end)
-  end
 
   defp with_root_child_process_options(nodes_lookup) do
     name = to_string(SolarWeb.SupervisorsLive.Supervisor.root_process_name())
@@ -119,7 +128,7 @@ defmodule SolarWeb.SupervisorsLive.Processes do
     :ok = SolarWeb.SupervisorsLive.Agent.Processes.clear_all()
 
     Enum.map(process_data, fn {key, values} ->
-      SolarWeb.SupervisorsLive.Agent.Processes.set(String.to_atom(key), values)
+      SolarWeb.SupervisorsLive.Agent.Processes.set(key, values)
     end)
   end
 
