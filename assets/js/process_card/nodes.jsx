@@ -70,7 +70,7 @@ const SIGNAL_ACTIONS = [
   {
     id: "restart",
     label: "Restart",
-    hint: "Supervisor.restart_child on its parent. Starts it again from its child spec.",
+    hint: "Supervisor.delete_child then start_child on its parent. Starts it fresh from the saved child spec, even if it was temporary.",
     when: "down",
   },
 ]
