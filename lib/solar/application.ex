@@ -37,7 +37,9 @@ defmodule Solar.Application do
 
   def process_initial_agent_data_and_update_agent_processes do
     data = SolarWeb.SupervisorsLive.Agent.Data.get()
-    :ok = SolarWeb.SupervisorsLive.Processes.parse_and_store_child_processes(data)
+
+    SolarWeb.SupervisorsLive.Processes.parse_and_store_child_processes(data)
+
     :ok
   end
 end

@@ -20,25 +20,27 @@ defmodule SolarWeb.SupervisorsLive.Processes do
     Supervisor.restart_child(Solar.Supervisor, root_process_name)
   end
 
-  def terminate_and_delete_process(parent, name) do
-    if Process.whereis(name) do
-      # `terminate_child` stops the running process. The process' child spec is kept in the supervisor.
-      # This is useful when you may restart a process later using `restart_child`. But in our case we
-      # want to remove the spec, since it contains information like `strategy` that might be different the
-      # next time it's recreated. So we also have to `delete_child` which removes the child spec.
-      Supervisor.terminate_child(parent, name)
-      Supervisor.delete_child(parent, name)
-    end
+  def terminate_and_delete_process_if_exists(parent, name) do
+    # `terminate_child` stops the running process. The process' child spec is
+    # kept in the supervisor. This is useful when you may restart a process later
+    # using `restart_child`. But in our case we want to remove the spec, since it
+    # contains information like `strategy` that might be different the next time
+    # it's recreated. So we also have to `delete_child` which removes the child
+    # spec.
+    #
+    # Both of these are safe to run on nodes that no longer exist, they just
+    # return `{:error, _}` tuples
+    Supervisor.terminate_child(parent, name)
+    Supervisor.delete_child(parent, name)
+    :ok
   end
 
   def start_process(parent, name, spec) do
-    if Process.whereis(name) == nil do
-      Supervisor.start_child(parent, spec)
-    end
+    terminate_and_delete_process_if_exists(parent, name)
+    Supervisor.start_child(parent, spec)
   end
 
   def restart_process(parent, name, spec) do
-    terminate_and_delete_process(parent, name)
     start_process(parent, name, spec)
   end
 
@@ -68,7 +70,7 @@ defmodule SolarWeb.SupervisorsLive.Processes do
     Enum.reduce(nodes, nodes_lookup, fn process_data, acc ->
       process_name = Map.get(process_data, "id")
       parent_name = Map.get(edges_lookup, process_name, "SolarWeb.SupervisorsLive.Supervisor")
-      child_options = nodes_lookup |> Map.fetch!(process_name) |> Keyword.drop([:children])
+      child_options = nodes_lookup |> Map.fetch!(process_name) |> Keyword.drop([:label, :position, :id, :children])
       child_module = Map.get(process_type_to_module_lookup, child_options[:type])
       child_entry = {child_module, child_options}
 
@@ -106,7 +108,9 @@ defmodule SolarWeb.SupervisorsLive.Processes do
       |> Keyword.put(:children, [])
 
     with_atom_values =
-      Keyword.replace_lazy(with_new_keys, :strategy, fn value -> String.to_atom(value) end)
+      with_new_keys
+      |> Keyword.replace_lazy(:strategy, fn value -> String.to_atom(value) end)
+      |> Keyword.replace_lazy(:restart, fn value -> String.to_atom(value) end)
 
     with_atom_values
   end
@@ -125,34 +129,63 @@ defmodule SolarWeb.SupervisorsLive.Processes do
     root_next_config = Map.get(all_next_configs, root_name)
     root_children_names = get_combined_children_names(root_next_config, root_process, root_name)
 
-    for child_name <- root_children_names do
-      walk_structure(all_prev_configs, all_next_configs, root_name, child_name)
+    for name <- root_children_names do
+      walk_structure(all_prev_configs, all_next_configs, name)
     end
   end
 
-  defp walk_structure(all_prev_configs, all_next_configs, parent_name, name) do
+  defp walk_structure(all_prev_configs, all_next_configs, name) do
     prev_config = Map.get(all_prev_configs, name)
+    prev_parent = get_parent_name(all_prev_configs, name)
+
     next_config = Map.get(all_next_configs, name)
-    next_spec = get_next_spec(all_next_configs, parent_name, name)
+    next_parent = get_parent_name(all_next_configs, name)
+    next_spec = get_next_spec(all_next_configs, next_parent, name)
+
     current_process = Process.whereis(name)
     children_names = get_combined_children_names(next_config, current_process, name)
 
     cond do
       # Currently running but not in next config
-      next_config == nil && current_process -> terminate_and_delete_process(parent_name, name)
-      #
-      # Not current running but in next config
-      next_config && current_process == nil -> start_process(parent_name, name, next_spec)
-      #
+      next_config == nil ->
+        terminate_and_delete_process_if_exists(prev_parent, name)
+
+      # Not currentjy running but in next config
+      next_config && current_process == nil ->
+        start_process(next_parent, name, next_spec)
+
+      # Currently running but parent has changed
+      prev_parent != next_parent && current_process ->
+        terminate_and_delete_process_if_exists(prev_parent, name)
+        start_process(next_parent, name, next_spec)
+
       # Currently running and in next config but different previous config
-      process_configs_different?(prev_config, next_config) -> restart_process(parent_name, name, next_spec)
-      #
+      process_configs_different?(prev_config, next_config) ->
+        restart_process(prev_parent, name, next_spec)
+
       # Currently running and in next config and same previous config
-      Enum.any?(children_names) -> walk_structure_for_children(all_prev_configs, all_next_configs, name, children_names)
-      #
+      Enum.any?(children_names) ->
+        walk_structure_for_children(all_prev_configs, all_next_configs, children_names)
+
       # End of a node in a tree
-      :else -> :ok
+      :else ->
+        :ok
     end
+  end
+
+  defp get_parent_name(all_configs, name) do
+    Enum.find_value(all_configs, fn {parent_name, config} ->
+      found? =
+        config
+        |> Keyword.get(:children, [])
+        |> Enum.any?(fn child_entry ->
+          child_options = elem(child_entry, 1)
+
+          child_options[:name] == name
+        end)
+
+      if found?, do: parent_name
+    end)
   end
 
   defp get_next_spec(all_next_configs, parent_name, name) do
@@ -182,9 +215,9 @@ defmodule SolarWeb.SupervisorsLive.Processes do
     prev != next
   end
 
-  defp walk_structure_for_children(all_prev_configs, all_next_configs, name, children_names) do
+  defp walk_structure_for_children(all_prev_configs, all_next_configs, children_names) do
     for child_name <- children_names do
-      walk_structure(all_prev_configs, all_next_configs, name, child_name)
+      walk_structure(all_prev_configs, all_next_configs, child_name)
     end
   end
 

@@ -39,9 +39,11 @@ defmodule SolarWeb.SupervisorsLive.Supervisor do
     # the same ID. The fix is to define our own `child_spec` function and
     # set the `id` to the `name` value instead.
     name = Keyword.fetch!(opts, :name)
+    restart = Keyword.get(opts, :restart, :permanent)
 
     %{
       id: name,
+      restart: restart,
       start: {__MODULE__, :start_link, [opts]},
       type: :supervisor
     }
@@ -61,9 +63,15 @@ defmodule SolarWeb.SupervisorsLive.Supervisor do
     process = Keyword.put(opts, :children, children)
 
     SolarWeb.SupervisorsLive.Agent.Processes.merge(name, process)
-    SolarWeb.SupervisorsLive.Presence.track_pid(self(), name, %{status: "starting"})
-    SolarWeb.SupervisorsLive.Presence.update_pid(self(), name, %{status: "running"}, after: 500)
+    SolarWeb.SupervisorsLive.Presence.track_pid(self(), name, presence(%{status: "starting"}))
+    SolarWeb.SupervisorsLive.Presence.update_pid(self(), name, presence(%{status: "running"}), after: 500)
 
     Supervisor.init(children, strategy: strategy)
+  end
+
+  def presence(additional \\ %{}) do
+    base = %{pid: inspect(self())}
+
+    Map.merge(base, additional)
   end
 end
