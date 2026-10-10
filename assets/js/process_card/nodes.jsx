@@ -8,7 +8,7 @@
 //   data.order      "#2/3", optional
 //   data.subtitle   config summary for the header, optional
 //   data.config     {strategy} for supervisors, {restart} for GenServers
-//   data.status     {state, restarts, last_exit}, layered on at render time
+//   data.status     {state, restarts, pid}, layered on at render time
 //                   by the canvas (see the hook); absent means not supervised
 //   data.root       true for the application's root supervisor
 import {Handle, Position} from "@xyflow/react"
@@ -29,7 +29,7 @@ function statusProps(data) {
   return {
     state: status?.state ?? "none",
     restarts: status?.restarts ?? 0,
-    lastExit: status?.last_exit ?? null,
+    pid: status?.pid ?? null,
   }
 }
 

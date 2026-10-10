@@ -77,6 +77,44 @@
       })
     }
 
+    // Connecting
+
+    // Node types that may have at most one inbound edge. In a supervision
+    // tree an edge means "supervises" and a process has exactly one
+    // supervisor. Other canvases (GenStage, for example) register their own
+    // node types and are free to leave them out of this set.
+    const SINGLE_INBOUND_TYPES = new Set(Object.keys(supervisionNodeTypes))
+
+    // Walks upstream from the source through existing inbound edges. If the
+    // target is reached, the new edge would close a loop. A self-connection
+    // is the trivial case: the source is its own first upstream node.
+    function createsCycle(connection, edges) {
+      const visited = new Set()
+      const pending = [connection.source]
+
+      while (pending.length > 0) {
+        const current = pending.pop()
+        if (current === connection.target) return true
+        if (visited.has(current)) continue
+
+        visited.add(current)
+        for (const edge of edges) {
+          if (edge.target === current) pending.push(edge.source)
+        }
+      }
+
+      return false
+    }
+
+    function isValidConnection(connection, nodes, edges) {
+      if (createsCycle(connection, edges)) return false
+
+      const target = nodes.find(node => node.id === connection.target)
+      if (!target || !SINGLE_INBOUND_TYPES.has(target.type)) return true
+
+      return !edges.some(edge => edge.target === connection.target)
+    }
+
     // Adding children
 
     const CHILD_OFFSET_Y = 260
@@ -119,7 +157,7 @@
     function toNodeStatus(meta) {
       if (!meta) return undefined
 
-      return {state: meta.status, restarts: meta.restarts ?? 0, last_exit: meta.last_exit ?? null}
+      return {state: meta.status, restarts: meta.restarts ?? 0, pid: meta.pid ?? null}
     }
 
     function toNodeStatuses(status) {
@@ -174,6 +212,13 @@
       const onEdgesChange = useCallback(changes => setEdges(current => applyEdgeChanges(changes, current)), [])
       const onConnect = useCallback(connection => setEdges(current => addEdge(connection, current)), [])
 
+      // ReactFlow consults this while an edge is being dragged, so an invalid
+      // target shows as such and `onConnect` is never called for it.
+      const validateConnection = useCallback(connection => {
+        const {nodes, edges} = latest.current
+        return isValidConnection(connection, nodes, edges)
+      }, [])
+
       const addChild = useCallback((parentId, kind) => {
         if (!(kind in KIND_PREFIX)) return
 
@@ -197,6 +242,7 @@
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            isValidConnection={validateConnection}
             deleteKeyCode={["Backspace", "Delete"]}
             fitView
             fitViewOptions={{padding: 0.3, maxZoom: 1}}
