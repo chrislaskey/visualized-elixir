@@ -24,6 +24,12 @@ defmodule SolarWeb.SupervisorsLive.Index do
     {:noreply, socket}
   end
 
+  def handle_event("action", params, socket) do
+    dbg(params)
+
+    {:noreply, socket}
+  end
+
   @impl true
   def handle_info({@pubsub_topic_data, data}, socket) do
     {:noreply, push_data_event(socket, data)}

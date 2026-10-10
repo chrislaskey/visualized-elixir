@@ -40,6 +40,59 @@ const RESTART_OPTIONS = [
 // permanent when the config does not say.
 const DEFAULT_RESTART = "permanent"
 
+// What can be done to a process. Each action's id is the `type` the hook
+// sends in the "action" event. `when` picks the actions that make sense for
+// the process's current state: signals need a live process, a restart needs
+// a dead one.
+//
+// The hints say which OTP call each one is and what the tree will do about
+// it, so the card teaches the difference between a crash the supervisor
+// recovers from and a shutdown it was asked for.
+const SIGNAL_ACTIONS = [
+  {
+    id: "kill",
+    label: "Kill",
+    hint: "Process.exit(pid, :kill). An abnormal exit, so its supervisor restarts it.",
+    when: "alive",
+  },
+  {
+    id: "stop",
+    label: "Stop",
+    hint: "Stops it with reason :normal. Only a permanent child is restarted after that.",
+    when: "alive",
+  },
+  {
+    id: "terminate",
+    label: "Terminate",
+    hint: "Supervisor.terminate_child on its parent. Stays down until restarted.",
+    when: "alive",
+  },
+  {
+    id: "restart",
+    label: "Restart",
+    hint: "Supervisor.restart_child on its parent. Starts it again from its child spec.",
+    when: "down",
+  },
+]
+
+const SUPERVISOR_ACTIONS = SIGNAL_ACTIONS
+
+// A GenServer can also crash from the inside, which a supervisor cannot.
+const GENSERVER_ACTIONS = [
+  {
+    id: "crash",
+    label: "Crash",
+    hint: "Raises inside a handle_call. An abnormal exit, so its supervisor restarts it.",
+    when: "alive",
+  },
+  ...SIGNAL_ACTIONS,
+]
+
+function actionsFor(actions, state) {
+  const alive = state === "running" || state === "starting"
+  return actions.filter(action => action.when === (alive ? "alive" : "down"))
+}
+
 const HANDLE_CLASS = "!size-3 !rounded-full !border-2 !border-base-100 !bg-base-content/40"
 
 function statusProps(data) {
@@ -56,13 +109,19 @@ function tabsFor(ids) {
 }
 
 export function SupervisorNode({id, data}) {
-  const {addChild, updateConfig} = useReactFlowContext()
+  const {addChild, updateConfig, act} = useReactFlowContext()
   const strategy = data.config?.strategy
   const restart = data.config?.restart ?? DEFAULT_RESTART
   const subtitle = data.subtitle ?? (strategy ? `${strategy} · ${restart} · gives up after 3 in 5s` : undefined)
+  const status = statusProps(data)
 
   const panels = {
-    action: <ActionPanel actions={["Kill", "Stop", "Delete"]} />,
+    action: (
+      <ActionPanel
+        actions={actionsFor(SUPERVISOR_ACTIONS, status.state)}
+        onAct={type => act(id, type)}
+      />
+    ),
     config: (
       <ConfigPanel
         fields={[
@@ -93,7 +152,7 @@ export function SupervisorNode({id, data}) {
       subtitle={subtitle}
       tabs={tabsFor(["action", "config", "add", "logs"])}
       panels={panels}
-      {...statusProps(data)}
+      {...status}
     >
       {!data.root && <Handle type="target" position={Position.Top} className={HANDLE_CLASS} />}
       <Handle type="source" position={Position.Bottom} className={HANDLE_CLASS} />
@@ -102,12 +161,18 @@ export function SupervisorNode({id, data}) {
 }
 
 export function GenServerNode({id, data}) {
-  const {updateConfig} = useReactFlowContext()
+  const {updateConfig, act} = useReactFlowContext()
   const restart = data.config?.restart ?? DEFAULT_RESTART
   const subtitle = data.subtitle ?? restart
+  const status = statusProps(data)
 
   const panels = {
-    action: <ActionPanel actions={["Crash", "Kill", "Stop", "Delete"]} />,
+    action: (
+      <ActionPanel
+        actions={actionsFor(GENSERVER_ACTIONS, status.state)}
+        onAct={type => act(id, type)}
+      />
+    ),
     config: (
       <ConfigPanel
         fields={[{key: "restart", value: restart, options: RESTART_OPTIONS}]}
@@ -126,7 +191,7 @@ export function GenServerNode({id, data}) {
       subtitle={subtitle}
       tabs={tabsFor(["action", "config", "logs"])}
       panels={panels}
-      {...statusProps(data)}
+      {...status}
     >
       <Handle type="target" position={Position.Top} className={HANDLE_CLASS} />
     </ProcessCard>

@@ -77,17 +77,10 @@
       })
     }
 
-    // Connecting
+    // Connecting nodes
 
-    // Node types that may have at most one inbound edge. In a supervision
-    // tree an edge means "supervises" and a process has exactly one
-    // supervisor. Other canvases (GenStage, for example) register their own
-    // node types and are free to leave them out of this set.
     const SINGLE_INBOUND_TYPES = new Set(Object.keys(supervisionNodeTypes))
 
-    // Walks upstream from the source through existing inbound edges. If the
-    // target is reached, the new edge would close a loop. A self-connection
-    // is the trivial case: the source is its own first upstream node.
     function createsCycle(connection, edges) {
       const visited = new Set()
       const pending = [connection.source]
@@ -175,8 +168,6 @@
       const [edges, setEdges] = useState(() => data.edges)
       const lastSynced = useRef(encodeForComparison(toServerData(data.nodes, data.edges)))
 
-      // The latest nodes and edges, so actions handed to the nodes
-      // through context stay stable across renders.
       const latest = useRef({nodes, edges})
       latest.current = {nodes, edges}
 
@@ -199,9 +190,6 @@
         pushEvent("data", {...next, client_id: browserInstanceId})
       }, [nodes, edges, browserInstanceId, pushEvent])
 
-      // Server status is layered on at render time so it never enters `nodes`
-      // state and therefore never enters the snapshot pushed back to the
-      // server. Custom nodes read it as data.status.
       const statuses = useMemo(() => toNodeStatuses(status), [status])
       const displayNodes = useMemo(
         () => nodes.map(node => ({...node, data: {...node.data, status: statuses[node.id]}})),
@@ -212,8 +200,6 @@
       const onEdgesChange = useCallback(changes => setEdges(current => applyEdgeChanges(changes, current)), [])
       const onConnect = useCallback(connection => setEdges(current => addEdge(connection, current)), [])
 
-      // ReactFlow consults this while an edge is being dragged, so an invalid
-      // target shows as such and `onConnect` is never called for it.
       const validateConnection = useCallback(connection => {
         const {nodes, edges} = latest.current
         return isValidConnection(connection, nodes, edges)
@@ -231,9 +217,6 @@
         setEdges(current => [...current, edge])
       }, [])
 
-      // Merges `patch` into one node's data.config. The sync effect above
-      // pushes the resulting graph; the server restarts the process whose
-      // options changed.
       const updateConfig = useCallback((nodeId, patch) => {
         setNodes(current =>
           current.map(node =>
@@ -244,7 +227,8 @@
         )
       }, [])
 
-      const context = useMemo(() => ({addChild, updateConfig}), [addChild, updateConfig])
+      const act = useCallback((nodeId, type) => pushEvent("action", {type, id: nodeId}), [pushEvent])
+      const context = useMemo(() => ({addChild, updateConfig, act}), [addChild, updateConfig, act])
 
       return (
         <ReactFlowContext.Provider value={context}>
