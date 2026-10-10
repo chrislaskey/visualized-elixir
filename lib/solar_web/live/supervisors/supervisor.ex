@@ -3,7 +3,11 @@ defmodule SolarWeb.SupervisorsLive.Supervisor do
 
   @root_process_name :"SolarWeb.SupervisorsLive.Supervisor"
   @child_definition {SolarWeb.SupervisorsLive.Supervisor,
-                     name: @root_process_name, strategy: :one_for_one, type: "supervisor"}
+                     name: @root_process_name,
+                     strategy: :one_for_one,
+                     type: "supervisor",
+                     max_restarts: 100_000_000,
+                     max_seconds: 1}
 
   def child_definition, do: @child_definition
   def root_process_name, do: @root_process_name
@@ -39,11 +43,15 @@ defmodule SolarWeb.SupervisorsLive.Supervisor do
     # the same ID. The fix is to define our own `child_spec` function and
     # set the `id` to the `name` value instead.
     name = Keyword.fetch!(opts, :name)
+    max_restarts = Keyword.get(opts, :max_restarts, 3)
+    max_seconds = Keyword.get(opts, :max_seconds, 5)
     restart = Keyword.get(opts, :restart, :permanent)
 
     %{
       id: name,
       restart: restart,
+      max_restarts: max_restarts,
+      max_seconds: max_seconds,
       start: {__MODULE__, :start_link, [opts]},
       type: :supervisor
     }

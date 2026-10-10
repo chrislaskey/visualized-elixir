@@ -24,8 +24,47 @@ defmodule SolarWeb.SupervisorsLive.Index do
     {:noreply, socket}
   end
 
-  def handle_event("action", params, socket) do
-    dbg(params)
+  def handle_event("action", %{"id" => id, "action" => action}, socket) do
+    # How processes receive signals depends a lot on which call is used and
+    # from which process. Paul Anthony Wilson has a great writeup of the
+    # distinctions here:
+    #
+    # https://furlough.merecomplexities.com/elixir/otp/2021/05/31/the-many-and-varied-ways-to-kill-an-otp-process.html
+    #
+    # Assumes exit trapping is the default behavoiur - not on generic
+    # GenServers but are trapped by Supervisors
+    name = String.to_atom(id)
+    pid = Process.whereis(name)
+    process = SolarWeb.SupervisorsLive.Agent.Processes.get(name)
+    parent_name = SolarWeb.SupervisorsLive.Processes.get_parent_name(name)
+
+    if process do
+      case action do
+        "stop" ->
+          if pid do
+            # Note: the `:shutdown` action is a normal stop, not an abnormal one
+            case process[:type] do
+              "supervisor" -> Supervisor.stop(pid, :shutdown)
+              "genserver" -> GenServer.stop(pid, :shutdown)
+              _ -> Process.exit(pid, :shutdown)
+            end
+          end
+
+        "kill" ->
+          if pid do
+            Process.exit(pid, :kill)
+          end
+
+        "terminate" ->
+          SolarWeb.SupervisorsLive.Processes.terminate(parent_name || Solar.Supervisor, name)
+
+        "restart" ->
+          SolarWeb.SupervisorsLive.Processes.restart_process(parent_name || Solar.Supervisor, name)
+
+        _ ->
+          :not_implemented
+      end
+    end
 
     {:noreply, socket}
   end
