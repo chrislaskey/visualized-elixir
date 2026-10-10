@@ -22,6 +22,24 @@ const SUPERVISOR_ADDS = [
   {kind: "supervisor", label: "+ Supervisor", hint: "A child supervisor with its own strategy"},
 ]
 
+// The values each config key can take, with a one-line note on what the
+// chosen value does. Values are the atoms the server expects, as strings.
+const STRATEGY_OPTIONS = [
+  {value: "one_for_one", note: "One crashes, only it restarts."},
+  {value: "one_for_all", note: "One crashes, every sibling restarts."},
+  {value: "rest_for_one", note: "One crashes, it and every sibling started after it restart."},
+]
+
+const RESTART_OPTIONS = [
+  {value: "permanent", note: "Always restarted, even after a normal stop."},
+  {value: "transient", note: "Restarted only after an abnormal exit."},
+  {value: "temporary", note: "Never restarted."},
+]
+
+// Every child spec has a restart option; the server defaults it to
+// permanent when the config does not say.
+const DEFAULT_RESTART = "permanent"
+
 const HANDLE_CLASS = "!size-3 !rounded-full !border-2 !border-base-100 !bg-base-content/40"
 
 function statusProps(data) {
@@ -38,13 +56,22 @@ function tabsFor(ids) {
 }
 
 export function SupervisorNode({id, data}) {
-  const {addChild} = useReactFlowContext()
+  const {addChild, updateConfig} = useReactFlowContext()
   const strategy = data.config?.strategy
-  const subtitle = data.subtitle ?? (strategy ? `${strategy} · gives up after 3 in 5s` : undefined)
+  const restart = data.config?.restart ?? DEFAULT_RESTART
+  const subtitle = data.subtitle ?? (strategy ? `${strategy} · ${restart} · gives up after 3 in 5s` : undefined)
 
   const panels = {
     action: <ActionPanel actions={["Kill", "Stop", "Delete"]} />,
-    config: <ConfigPanel label="strategy" value={strategy} />,
+    config: (
+      <ConfigPanel
+        fields={[
+          {key: "strategy", value: strategy, options: STRATEGY_OPTIONS},
+          {key: "restart", value: restart, options: RESTART_OPTIONS},
+        ]}
+        onChange={(key, value) => updateConfig(id, {[key]: value})}
+      />
+    ),
     add: ({close}) => (
       <AddPanel
         options={SUPERVISOR_ADDS}
@@ -74,13 +101,19 @@ export function SupervisorNode({id, data}) {
   )
 }
 
-export function GenServerNode({data}) {
-  const restart = data.config?.restart
-  const subtitle = data.subtitle ?? (restart ? `${restart}` : undefined)
+export function GenServerNode({id, data}) {
+  const {updateConfig} = useReactFlowContext()
+  const restart = data.config?.restart ?? DEFAULT_RESTART
+  const subtitle = data.subtitle ?? restart
 
   const panels = {
     action: <ActionPanel actions={["Crash", "Kill", "Stop", "Delete"]} />,
-    config: <ConfigPanel label="restart" value={restart} />,
+    config: (
+      <ConfigPanel
+        fields={[{key: "restart", value: restart, options: RESTART_OPTIONS}]}
+        onChange={(key, value) => updateConfig(id, {[key]: value})}
+      />
+    ),
     logs: <LogsPanel />,
   }
 

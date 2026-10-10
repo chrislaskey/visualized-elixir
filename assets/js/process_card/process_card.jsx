@@ -84,7 +84,7 @@ export function CardHeader({icon, state, label, order, kindName, subtitle}) {
           <h3 className="truncate font-semibold">{label}</h3>
           {order && <span className="font-mono text-[10px] text-base-content/50">{order}</span>}
         </div>
-        <p className="truncate text-xs text-base-content/60">
+        <p className="truncate text-xs text-base-content/60" title={subtitle ? `${kindName} · ${subtitle}` : undefined}>
           {kindName}
           {subtitle && <> · {subtitle}</>}
         </p>
@@ -180,7 +180,7 @@ export function Drawer({children}) {
  *   label      "Supervisor 2"
  *   order      "#2/3", start order under the parent, optional
  *   kindName   "Supervisor" | "GenServer"
- *   subtitle   config summary, e.g. "one_for_all · gives up after 3 in 5s"
+ *   subtitle   config summary, e.g. "one_for_all · permanent · gives up after 3 in 5s"
  *   state      "running" | "starting" | "down" | "none"
  *   restarts   number
  *   pid        "#PID<0.332.0>" | null
@@ -201,7 +201,7 @@ export function ProcessCard({
   pid = null,
   tabs = TABS,
   panels = {},
-  className = "w-72",
+  className = "w-76",
   children,
 }) {
   const [active, setActive] = useState(null)
