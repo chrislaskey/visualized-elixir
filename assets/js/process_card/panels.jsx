@@ -1,24 +1,44 @@
-// What each tab opens. The Add and Config panels are built; Action and Logs
-// are placeholders sketching the shape of each panel from the exploration so
-// the drawer has something to show.
+// What each tab opens. Action, Config, and Add are built; Logs is a
+// placeholder sketching the shape of the panel from the exploration so the
+// drawer has something to show.
 
 function Placeholder({children}) {
   return <p className="text-[11px] leading-snug text-base-content/60">{children}</p>
 }
 
-export function ActionPanel({actions = []}) {
+// A two-column grid of buttons, each a label with a one-line hint. The Add
+// and Action panels are both this: a handful of things the process can do,
+// each explained in place so the card teaches as it goes. No colours; the
+// hint carries the weight.
+//
+//   choices   [{id, label, hint}]
+//   onChoose  called with the clicked choice's id
+export function ChoiceGrid({choices = [], onChoose}) {
   return (
-    <div className="space-y-1.5">
-      <Placeholder>Actions on this process will go here.</Placeholder>
-      <div className="flex flex-wrap items-center gap-1 text-[10px] text-base-content/40">
-        {actions.map(action => (
-          <span key={action} className="rounded-md border border-dashed border-base-content/30 px-1.5 py-0.5">
-            {action}
-          </span>
-        ))}
-      </div>
+    <div className="grid grid-cols-2 gap-1.5">
+      {choices.map(choice => (
+        <button
+          key={choice.id}
+          type="button"
+          onClick={() => onChoose?.(choice.id)}
+          className="min-w-0 rounded-md border border-base-300 bg-base-100 px-2 py-1.5 text-left transition-colors hover:border-base-content/40 active:scale-[0.98]"
+        >
+          <span className="text-[11px] font-medium">{choice.label}</span>
+          <span className="block break-words text-[10px] leading-snug text-base-content/60">{choice.hint}</span>
+        </button>
+      ))}
     </div>
   )
+}
+
+// The Action panel: what can be done to the running process. The panel
+// stays open after a click so an action can be repeated, say killing a
+// process a few times to watch its supervisor give up.
+//
+//   actions  [{id, label, hint}]
+//   onAct    called with the action's id
+export function ActionPanel({actions = [], onAct}) {
+  return <ChoiceGrid choices={actions} onChoose={onAct} />
 }
 
 // The segmented control from round three: one button per option, the chosen
@@ -87,27 +107,13 @@ export function ConfigPanel({fields = [], onChange}) {
   )
 }
 
-// The Add panel from round three: a two-column grid of buttons, one per kind
-// of child this process can have, each with a label and a one-line hint.
+// The Add panel: one button per kind of child this process can have.
 //
 //   options  [{kind, label, hint}]
 //   onAdd    called with the option's kind
 export function AddPanel({options = [], onAdd}) {
-  return (
-    <div className="grid grid-cols-2 gap-1.5">
-      {options.map(option => (
-        <button
-          key={option.kind}
-          type="button"
-          onClick={() => onAdd?.(option.kind)}
-          className="rounded-md border border-base-300 bg-base-100 px-2 py-1.5 text-left transition-colors hover:border-base-content/40 active:scale-[0.98]"
-        >
-          <span className="text-[11px] font-medium">{option.label}</span>
-          <span className="block text-[10px] leading-snug text-base-content/60">{option.hint}</span>
-        </button>
-      ))}
-    </div>
-  )
+  const choices = options.map(option => ({id: option.kind, label: option.label, hint: option.hint}))
+  return <ChoiceGrid choices={choices} onChoose={onAdd} />
 }
 
 export function LogsPanel() {
