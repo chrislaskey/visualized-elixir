@@ -47,7 +47,7 @@ defmodule SolarWeb.Layouts do
         </div>
       </div>
       <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
+        <ul class="hidden sm:flex flex-column px-1 space-x-4 items-center">
           <li></li>
           <li>
             <.link
@@ -76,6 +76,7 @@ defmodule SolarWeb.Layouts do
             </a>
           </li>
         </ul>
+        <.mobile_nav />
       </div>
     </header>
 
@@ -86,6 +87,75 @@ defmodule SolarWeb.Layouts do
     </main>
 
     <.flash_group flash={@flash} />
+    """
+  end
+
+  def mobile_nav(assigns) do
+    ~H"""
+    <nav class="sm:hidden">
+      <details
+        id="mobile-nav"
+        class="dropdown dropdown-end"
+        phx-click-away={JS.remove_attribute("open")}
+      >
+        <summary
+          class="flex cursor-pointer list-none items-center rounded-lg p-2 text-base-content/70 select-none hover:bg-base-200 hover:text-base-content"
+        >
+          <.icon name="hero-bars-3" class="size-5" />
+        </summary>
+
+        <div class="dropdown-content z-30 mt-2 w-56 rounded-lg border border-base-300 bg-base-100 p-1.5 shadow-lg">
+          <ul>
+            <li>
+              <.link
+                navigate="/"
+                class="block rounded-lg px-2.5 py-2 text-sm font-semibold text-base-content transition-colors hover:bg-base-200 hover:text-primary"
+              >
+                Home
+              </.link>
+            </li>
+            <li>
+              <.link
+                navigate="/supervisors"
+                class="block rounded-lg px-2.5 py-2 text-sm font-semibold text-base-content transition-colors hover:bg-base-200 hover:text-primary"
+              >
+                Supervisors
+              </.link>
+            </li>
+            <li>
+              <.link
+                navigate="/dashboard"
+                class="block rounded-lg px-2.5 py-2 text-sm text-base-content transition-colors hover:bg-base-200 hover:text-primary"
+              >
+                Live Dashboard
+              </.link>
+            </li>
+            <li>
+              <a
+                href="https://github.com/chrislaskey/visualized-elixir"
+                class="block rounded-lg px-2.5 py-2 text-sm text-base-content transition-colors hover:bg-base-200 hover:text-primary"
+              >
+                GitHub
+              </a>
+            </li>
+          </ul>
+        </div>
+      </details>
+    </nav>
+    """
+  end
+
+  attr :navigate, :string, required: true
+  slot :inner_block, required: true
+
+  defp mobile_nav_link(assigns) do
+    ~H"""
+    <.link
+      navigate={@navigate}
+      class="block rounded-lg px-2.5 py-2 text-sm font-medium text-base-content transition-colors hover:bg-base-200 hover:text-primary"
+    >
+      {render_slot(@inner_block)}
+    </.link>
     """
   end
 
