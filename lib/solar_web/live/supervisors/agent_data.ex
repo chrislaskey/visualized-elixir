@@ -66,4 +66,6 @@ defmodule SolarWeb.SupervisorsLive.Agent.Data do
       {{current_state, next_state}, next_state}
     end)
   end
+
+  def default_data, do: @default_data
 end

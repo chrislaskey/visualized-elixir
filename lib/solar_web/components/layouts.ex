@@ -98,9 +98,7 @@ defmodule SolarWeb.Layouts do
         class="dropdown dropdown-end"
         phx-click-away={JS.remove_attribute("open")}
       >
-        <summary
-          class="flex cursor-pointer list-none items-center rounded-lg p-2 text-base-content/70 select-none hover:bg-base-200 hover:text-base-content"
-        >
+        <summary class="flex cursor-pointer list-none items-center rounded-lg p-2 text-base-content/70 select-none hover:bg-base-200 hover:text-base-content">
           <.icon name="hero-bars-3" class="size-5" />
         </summary>
 
@@ -142,20 +140,6 @@ defmodule SolarWeb.Layouts do
         </div>
       </details>
     </nav>
-    """
-  end
-
-  attr :navigate, :string, required: true
-  slot :inner_block, required: true
-
-  defp mobile_nav_link(assigns) do
-    ~H"""
-    <.link
-      navigate={@navigate}
-      class="block rounded-lg px-2.5 py-2 text-sm font-medium text-base-content transition-colors hover:bg-base-200 hover:text-primary"
-    >
-      {render_slot(@inner_block)}
-    </.link>
     """
   end
 
