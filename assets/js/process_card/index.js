@@ -13,6 +13,6 @@ export {
   TabBar,
   stateStyle,
 } from "./process_card.jsx"
-export {ActionPanel, AddPanel, ChoiceGrid, ConfigPanel, LogsPanel, Segmented} from "./panels.jsx"
+export {ActionPanel, AddPanel, ChoiceGrid, ConfigPanel, RemovePanel, Segmented} from "./panels.jsx"
 export {GenServerNode, SupervisorNode, supervisionNodeTypes} from "./nodes.jsx"
 export {ReactFlowContext, useReactFlowContext} from "./react_flow_context.jsx"

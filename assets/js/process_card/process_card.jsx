@@ -45,7 +45,7 @@ export const TABS = [
   {id: "action", label: "Action", icon: "hero-bolt-micro"},
   {id: "config", label: "Config", icon: "hero-adjustments-horizontal-micro"},
   {id: "add", label: "Add", icon: "hero-plus-micro"},
-  {id: "logs", label: "Logs", icon: "hero-list-bullet-micro"},
+  {id: "remove", label: "Remove", icon: "hero-minus-micro"},
 ]
 
 const GRID_COLS = {3: "grid-cols-3", 4: "grid-cols-4", 5: "grid-cols-5"}

@@ -13,7 +13,7 @@
 //   data.root       true for the application's root supervisor
 import {Handle, Position} from "@xyflow/react"
 import {KIND_ICONS, ProcessCard, TABS} from "./process_card.jsx"
-import {ActionPanel, AddPanel, ConfigPanel, LogsPanel} from "./panels.jsx"
+import {ActionPanel, AddPanel, ConfigPanel, RemovePanel} from "./panels.jsx"
 import {useReactFlowContext} from "./react_flow_context.jsx"
 
 // What a supervisor can add. One kind for now; a GenServer option joins it
@@ -109,7 +109,7 @@ function tabsFor(ids) {
 }
 
 export function SupervisorNode({id, data}) {
-  const {addChild, updateConfig, act} = useReactFlowContext()
+  const {addChild, updateConfig, act, removeNode, removeEdges} = useReactFlowContext()
   const strategy = data.config?.strategy
   const restart = data.config?.restart ?? DEFAULT_RESTART
   const subtitle = data.subtitle ?? (strategy ? `${strategy} · ${restart} · gives up after 3 in 5s` : undefined)
@@ -140,7 +140,14 @@ export function SupervisorNode({id, data}) {
         }}
       />
     ),
-    logs: <LogsPanel />,
+    remove: ({close}) => (
+      <RemovePanel
+        onRemove={what => {
+          what === "node" ? removeNode(id) : removeEdges(id)
+          close()
+        }}
+      />
+    ),
   }
 
   return (
@@ -150,7 +157,7 @@ export function SupervisorNode({id, data}) {
       order={data.order}
       kindName="Supervisor"
       subtitle={subtitle}
-      tabs={tabsFor(["action", "config", "add", "logs"])}
+      tabs={tabsFor(["action", "config", "add", "remove"])}
       panels={panels}
       {...status}
     >
@@ -161,7 +168,7 @@ export function SupervisorNode({id, data}) {
 }
 
 export function GenServerNode({id, data}) {
-  const {updateConfig, act} = useReactFlowContext()
+  const {updateConfig, act, removeNode, removeEdges} = useReactFlowContext()
   const restart = data.config?.restart ?? DEFAULT_RESTART
   const subtitle = data.subtitle ?? restart
   const status = statusProps(data)
@@ -179,7 +186,14 @@ export function GenServerNode({id, data}) {
         onChange={(key, value) => updateConfig(id, {[key]: value})}
       />
     ),
-    logs: <LogsPanel />,
+    remove: ({close}) => (
+      <RemovePanel
+        onRemove={what => {
+          what === "node" ? removeNode(id) : removeEdges(id)
+          close()
+        }}
+      />
+    ),
   }
 
   return (
@@ -189,7 +203,7 @@ export function GenServerNode({id, data}) {
       order={data.order}
       kindName="GenServer"
       subtitle={subtitle}
-      tabs={tabsFor(["action", "config", "logs"])}
+      tabs={tabsFor(["action", "config", "remove"])}
       panels={panels}
       {...status}
     >
