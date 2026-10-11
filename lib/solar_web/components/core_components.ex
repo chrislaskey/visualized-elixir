@@ -353,7 +353,7 @@ defmodule SolarWeb.CoreComponents do
 
   def h2(assigns) do
     ~H"""
-    <h2 class="mb-6 text-xl leading-6">
+    <h2 class="mt-10 mb-6 text-xl leading-6">
       {render_slot(@inner_block)}
     </h2>
     """

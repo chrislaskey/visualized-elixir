@@ -17,9 +17,13 @@ defmodule SolarWeb.SupervisorsLive.Index do
 
   @impl true
   def handle_event("data", params, socket) do
-    {previous, next} = get_and_update_data(params)
-    :ok = Phoenix.PubSub.broadcast(Solar.PubSub, @pubsub_topic_data, {@pubsub_topic_data, next})
-    maybe_update_processes(previous, next)
+    handle_data(params, socket)
+
+    {:noreply, socket}
+  end
+
+  def handle_event("reset", _params, socket) do
+    handle_data(SolarWeb.SupervisorsLive.Agent.Data.default_data(), socket)
 
     {:noreply, socket}
   end
@@ -82,6 +86,12 @@ defmodule SolarWeb.SupervisorsLive.Index do
   end
 
   # Helpers - Processes
+
+  defp handle_data(data, _socket) do
+    {previous, next} = get_and_update_data(data)
+    :ok = Phoenix.PubSub.broadcast(Solar.PubSub, @pubsub_topic_data, {@pubsub_topic_data, next})
+    maybe_update_processes(previous, next)
+  end
 
   defp maybe_update_processes(previous, next) do
     if processes_changed?(previous, next) do
