@@ -22,11 +22,11 @@ defmodule SolarWeb.SupervisorsLive.Agent.Data do
         }
       },
       %{
-        "id" => "gen-3",
+        "id" => "sup-3",
         "type" => "supervisor",
         "position" => %{"x" => 360, "y" => 240},
         "data" => %{
-          "label" => "GenServer 3",
+          "label" => "Supervisor 3",
           "config" => %{
             "restart" => "permanent",
             "strategy" => "one_for_all"
@@ -34,11 +34,11 @@ defmodule SolarWeb.SupervisorsLive.Agent.Data do
         }
       },
       %{
-        "id" => "gen-4",
+        "id" => "sup-4",
         "type" => "supervisor",
         "position" => %{"x" => 0, "y" => 500},
         "data" => %{
-          "label" => "GenServer 4",
+          "label" => "Supervisor 4",
           "config" => %{
             "restart" => "permanent",
             "strategy" => "one_for_all"
@@ -48,8 +48,8 @@ defmodule SolarWeb.SupervisorsLive.Agent.Data do
     ],
     "edges" => [
       %{"id" => "root-sup-2", "source" => "root", "target" => "sup-2"},
-      %{"id" => "root-gen-3", "source" => "root", "target" => "gen-3"},
-      %{"id" => "sup-2-gen-4", "source" => "sup-2", "target" => "gen-4"}
+      %{"id" => "root-sup-3", "source" => "root", "target" => "sup-3"},
+      %{"id" => "sup-2-sup-4", "source" => "sup-2", "target" => "sup-4"}
     ]
   }
 
