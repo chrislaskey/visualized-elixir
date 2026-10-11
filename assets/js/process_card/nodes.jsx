@@ -58,7 +58,7 @@ const SIGNAL_ACTIONS = [
   {
     id: "stop",
     label: "Stop",
-    hint: "Stops it with reason :normal. Only a permanent child is restarted after that.",
+    hint: "stop(pid, :shutdown). Stops with a normal exit, so only a permanent child is restarted.",
     when: "alive",
   },
   {
@@ -70,7 +70,7 @@ const SIGNAL_ACTIONS = [
   {
     id: "restart",
     label: "Restart",
-    hint: "Supervisor.restart_child on its parent. Starts it again from its child spec.",
+    hint: "Supervisor.delete_child then start_child on its parent. Starts it fresh from the saved child spec, even if it was temporary.",
     when: "down",
   },
 ]

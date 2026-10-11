@@ -56,6 +56,45 @@ defmodule SolarWeb.SupervisorsLive.Processes do
     |> Map.new(fn {key, values} -> {String.to_atom(key), values} end)
   end
 
+  # User actions
+
+  def handle_user_action(id, action) do
+    name = String.to_atom(id)
+    pid = Process.whereis(name)
+    process = SolarWeb.SupervisorsLive.Agent.Processes.get(name)
+    parent_name = SolarWeb.SupervisorsLive.Processes.get_parent_name(name)
+
+    if process do
+      case action do
+        "stop" ->
+          if pid do
+            # Note: the `:shutdown` action is a normal stop, not an abnormal one
+            case process[:type] do
+              "supervisor" -> Supervisor.stop(pid, :shutdown)
+              "genserver" -> GenServer.stop(pid, :shutdown)
+              _ -> Process.exit(pid, :shutdown)
+            end
+          end
+
+        "kill" ->
+          if pid do
+            Process.exit(pid, :kill)
+          end
+
+        "terminate" ->
+          SolarWeb.SupervisorsLive.Processes.terminate(parent_name || Solar.Supervisor, name)
+
+        "restart" ->
+          SolarWeb.SupervisorsLive.Processes.restart_process(parent_name || Solar.Supervisor, name)
+
+        _ ->
+          :not_implemented
+      end
+    end
+
+    :ok
+  end
+
   # Lifecycle functions
 
   def restart_all_processes() do
@@ -80,13 +119,81 @@ defmodule SolarWeb.SupervisorsLive.Processes do
     :ok
   end
 
+  def terminate(parent, name) do
+    Supervisor.terminate_child(parent, name)
+  end
+
+  def delete_child(parent, name) do
+    Supervisor.delete_child(parent, name)
+  end
+
+  def start_process(parent, name) do
+    start_process(parent, name, get_spec(parent, name))
+  end
+
   def start_process(parent, name, spec) do
     terminate_and_delete_process_if_exists(parent, name)
     Supervisor.start_child(parent, spec)
   end
 
+  def restart_process(parent, name) do
+    restart_process(parent, name, get_spec(parent, name))
+  end
+
   def restart_process(parent, name, spec) do
     start_process(parent, name, spec)
+  end
+
+  # Functions - data lookup
+
+  def root_process?(name) do
+    name_as_atom = name |> to_string() |> String.to_atom()
+
+    name_as_atom == SolarWeb.SupervisorsLive.Supervisor.root_process_name()
+  end
+
+  def get_parent_name(name) do
+    if root_process?(name) do
+      Solar.Supervisor
+    else
+      get_parent_name(SolarWeb.SupervisorsLive.Agent.Processes.get(), name)
+    end
+  end
+
+  def get_parent_name(all_processes_config, name) do
+    Enum.find_value(all_processes_config, fn {parent_name, config} ->
+      found? =
+        config
+        |> Keyword.get(:children, [])
+        |> Enum.any?(fn child_entry ->
+          child_options = elem(child_entry, 1)
+
+          child_options[:name] == name
+        end)
+
+      if found?, do: parent_name
+    end)
+  end
+
+  def get_spec(parent_name, name) do
+    get_spec(SolarWeb.SupervisorsLive.Agent.Processes.get(), parent_name, name)
+  end
+
+  def get_spec(all_processes_config, parent_name, name) do
+    # Returns the child_spec for the next process. In the `next_config` this is
+    # defined in the parent entry since it's the one that creates the child.
+    #
+    # Returns `nil` when not found.
+    if Map.has_key?(all_processes_config, parent_name) do
+      all_processes_config
+      |> Map.get(parent_name)
+      |> Keyword.get(:children, [])
+      |> Enum.find(fn entry ->
+        options = elem(entry, 1)
+
+        Keyword.get(options, :name) == name
+      end)
+    end
   end
 
   # Helpers
@@ -149,7 +256,7 @@ defmodule SolarWeb.SupervisorsLive.Processes do
 
     next_config = Map.get(all_next_configs, name)
     next_parent = get_parent_name(all_next_configs, name)
-    next_spec = get_next_spec(all_next_configs, next_parent, name)
+    next_spec = get_spec(all_next_configs, next_parent, name)
 
     current_process = Process.whereis(name)
     children_names = get_combined_children_names(next_config, current_process, name)
@@ -179,38 +286,6 @@ defmodule SolarWeb.SupervisorsLive.Processes do
       # End of a node in a tree
       :else ->
         :ok
-    end
-  end
-
-  defp get_parent_name(all_configs, name) do
-    Enum.find_value(all_configs, fn {parent_name, config} ->
-      found? =
-        config
-        |> Keyword.get(:children, [])
-        |> Enum.any?(fn child_entry ->
-          child_options = elem(child_entry, 1)
-
-          child_options[:name] == name
-        end)
-
-      if found?, do: parent_name
-    end)
-  end
-
-  defp get_next_spec(all_next_configs, parent_name, name) do
-    # Returns the child_spec for the next process. In the `next_config` this is
-    # defined in the parent entry since it's the one that creates the child.
-    #
-    # Returns `nil` when not found.
-    if Map.has_key?(all_next_configs, parent_name) do
-      all_next_configs
-      |> Map.get(parent_name)
-      |> Keyword.get(:children, [])
-      |> Enum.find(fn entry ->
-        options = elem(entry, 1)
-
-        Keyword.get(options, :name) == name
-      end)
     end
   end
 

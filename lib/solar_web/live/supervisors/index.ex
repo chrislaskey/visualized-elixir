@@ -24,8 +24,8 @@ defmodule SolarWeb.SupervisorsLive.Index do
     {:noreply, socket}
   end
 
-  def handle_event("action", params, socket) do
-    dbg(params)
+  def handle_event("action", %{"id" => id, "action" => action}, socket) do
+    :ok = SolarWeb.SupervisorsLive.Processes.handle_user_action(id, action)
 
     {:noreply, socket}
   end

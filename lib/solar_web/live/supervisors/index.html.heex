@@ -227,7 +227,7 @@
         )
       }, [])
 
-      const act = useCallback((nodeId, type) => pushEvent("action", {type, id: nodeId}), [pushEvent])
+      const act = useCallback((nodeId, action) => pushEvent("action", {action, id: nodeId}), [pushEvent])
       const context = useMemo(() => ({addChild, updateConfig, act}), [addChild, updateConfig, act])
 
       return (
