@@ -1,10 +1,4 @@
-// What each tab opens. Action, Config, and Add are built; Logs is a
-// placeholder sketching the shape of the panel from the exploration so the
-// drawer has something to show.
-
-function Placeholder({children}) {
-  return <p className="text-[11px] leading-snug text-base-content/60">{children}</p>
-}
+// What each tab opens: Action, Config, Add, and Remove.
 
 // A two-column grid of buttons, each a label with a one-line hint. The Add
 // and Action panels are both this: a handful of things the process can do,
@@ -116,11 +110,24 @@ export function AddPanel({options = [], onAdd}) {
   return <ChoiceGrid choices={choices} onChoose={onAdd} />
 }
 
-export function LogsPanel() {
-  return (
-    <div className="space-y-1">
-      <Placeholder>This process's start and exit events will go here, newest first.</Placeholder>
-      <p className="text-[10px] text-base-content/40">No events yet.</p>
-    </div>
-  )
+// The Remove panel: take the process off the canvas, or only cut its
+// connections. Both are plain graph edits; the hook syncs the new graph to
+// the server, which stops or re-parents the processes to match.
+//
+//   onRemove  called with "node" or "edges"
+const REMOVE_CHOICES = [
+  {
+    id: "node",
+    label: "Delete process",
+    hint: "Removes this process and every connection to it. Any children are left without a parent.",
+  },
+  {
+    id: "edges",
+    label: "Delete connections",
+    hint: "Removes every connection to and from this process. The process stays.",
+  },
+]
+
+export function RemovePanel({onRemove}) {
+  return <ChoiceGrid choices={REMOVE_CHOICES} onChoose={onRemove} />
 }

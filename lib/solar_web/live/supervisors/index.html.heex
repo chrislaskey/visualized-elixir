@@ -22,6 +22,7 @@
       addEdge,
       applyEdgeChanges,
       applyNodeChanges,
+      useReactFlow,
     } from "@xyflow/react"
 
     // Data
@@ -228,7 +229,23 @@
       }, [])
 
       const act = useCallback((nodeId, action) => pushEvent("action", {action, id: nodeId}), [pushEvent])
-      const context = useMemo(() => ({addChild, updateConfig, act}), [addChild, updateConfig, act])
+
+      // Note: removing through the buttons goes through ReactFlow's
+      // deleteElements rather than setNodes and setEdges directly, so it
+      // takes the same path as the Delete key.
+      const {deleteElements} = useReactFlow()
+
+      const removeNode = useCallback(nodeId => deleteElements({nodes: [{id: nodeId}]}), [deleteElements])
+
+      const removeEdges = useCallback(nodeId => {
+        const attached = latest.current.edges.filter(edge => edge.source === nodeId || edge.target === nodeId)
+        if (attached.length > 0) deleteElements({edges: attached})
+      }, [deleteElements])
+
+      const context = useMemo(
+        () => ({addChild, updateConfig, act, removeNode, removeEdges}),
+        [addChild, updateConfig, act, removeNode, removeEdges],
+      )
 
       return (
         <ReactFlowContext.Provider value={context}>
